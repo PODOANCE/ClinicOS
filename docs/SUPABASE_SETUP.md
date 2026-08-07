@@ -30,25 +30,38 @@ Guía para configurar Supabase Auth y la base de datos de ClinicOS.
 
 ## 2. Crear Esquema de Base de Datos
 
-### 2.1 Ejecutar Migraciones
+### 2.1 Ejecutar Migraciones de Schema
 
 1. Ve a Supabase → `SQL Editor`
 2. Abre archivo `docs/DATABASE_SCHEMA.sql` desde este proyecto
-3. Copia TODO el contenido
-4. Pega en `SQL Editor` de Supabase
-5. Haz clic en "Run"
+3. Lee COMPLETAMENTE el archivo (contiene comentarios importantes sobre RLS)
+4. Copia TODO el contenido SQL (excluyendo comentarios de guía si lo prefieres)
+5. Pega en `SQL Editor` de Supabase
+6. Haz clic en "Run"
 
-✅ Verifica que se hayan creado las tablas
+**Verificación:**
+- ✅ Se crearon 5 tablas: `usuarios_sistema`, `centros`, `roles`, `usuarios`, `usuarios_roles`, `tareas`
+- ✅ Se crearon índices (idx_*) para performance
+- ✅ Se habilitaron políticas RLS (Row Level Security)
+- ✅ No hay errores en el log
 
-### 2.2 Insertar Roles Iniciales
+**Importante:** Las políticas RLS están DOCUMENTADAS en el archivo. Son PROVISIONALES en V1.
+Ver `docs/DECISIONS.md` → D003 y D006 para entender por qué.
+
+### 2.2 Insertar Roles y Centro Iniciales
 
 1. Ve a `SQL Editor` nuevamente
-2. Abre archivo `docs/SEED_DATA.sql`
-3. Copia TODO el contenido (solo la parte de INSERT INTO roles)
+2. Abre archivo `docs/SEED_DATA.sql` desde este proyecto
+3. Copia TODO el contenido (hasta la línea que dice "PASO 3")
 4. Pega en `SQL Editor`
 5. Haz clic en "Run"
 
-✅ Verifica que existan 4 roles: Administrador del sistema, Administración, Podólogo, Ortopedia
+**Verificación:**
+- ✅ Se creó 1 centro: "Podología y Biomecánica Rivas" (UUID: `12345678-1234-5678-1234-567812345678`)
+- ✅ Se crearon 4 roles: Administrador del sistema, Administración, Podólogo, Ortopedia
+- ✅ No hay errores
+
+**IMPORTANTE:** Estos UUIDs de centro y usuario sistema son FIJOS en Fase 1. Ver `docs/DECISIONS.md` → D002 y D004.
 
 ## 3. Crear Usuarios de Prueba
 

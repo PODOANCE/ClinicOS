@@ -1,8 +1,29 @@
 -- ClinicOS Seed Data
--- Ejecutar DESPUÉS de DATABASE_SCHEMA.sql
--- Nota: Los usuarios deben crearse primero en Supabase Auth antes de insertar aquí
+-- Ejecutar DESPUÉS de DATABASE_SCHEMA.sql (Fase 1)
+--
+-- ORDEN:
+-- 1. Crear centro por defecto
+-- 2. Crear los 4 roles iniciales
+-- 3. (Manual) Crear usuarios en Supabase Auth
+-- 4. (Manual) Insertar usuarios en tabla usuarios
+-- 5. (Manual) Asignar roles a usuarios
 
--- Insertar roles iniciales (según 04-ROLES.md)
+-- ============================================================================
+-- PASO 1: Centro por defecto
+-- ============================================================================
+
+INSERT INTO centros (id, nombre, direccion, activo, created_by) VALUES
+(
+  '12345678-1234-5678-1234-567812345678', -- UUID fijo para Fase 1 (un solo centro)
+  'Podología y Biomecánica Rivas',
+  'Calle Principal 123, Ciudad',
+  TRUE,
+  '00000000-0000-0000-0000-000000000000' -- Usuario sistema
+);
+
+-- ============================================================================
+-- PASO 2: Insertar roles iniciales (según 04-ROLES.md)
+-- ============================================================================
 INSERT INTO roles (nombre, areas_permitidas) VALUES
 (
   'Administrador del sistema',
@@ -46,14 +67,41 @@ INSERT INTO roles (nombre, areas_permitidas) VALUES
   }'
 );
 
--- Nota: Los usuarios deben insertarse con el ID del usuario de Supabase Auth
--- Ejemplo (reemplazar {UUID} con el UUID real de auth.users):
+-- ============================================================================
+-- PASO 3: Crear usuarios en Supabase Auth (MANUAL - UI de Supabase)
+-- ============================================================================
 --
--- INSERT INTO usuarios (id, email, nombre, activo, created_by) VALUES
--- ('{UUID_ADMIN}', 'admin@clinicos.local', 'Administrador', TRUE, 'system'),
--- ('{UUID_ADMIN_STAFF}', 'staff@clinicos.local', 'Staff Administrativo', TRUE, 'system'),
--- ('{UUID_PODOLOGIST}', 'podo@clinicos.local', 'Podólogo', TRUE, 'system'),
--- ('{UUID_ORTHO}', 'ortho@clinicos.local', 'Ortopedia', TRUE, 'system');
+-- Ve a Supabase → Authentication → Users → Add user
+-- Crea 4 usuarios:
+--
+-- 1. admin@clinicos.local / Password123! (Administrador del sistema)
+-- 2. staff@clinicos.local / Password123! (Administración)
+-- 3. podo@clinicos.local / Password123! (Podólogo)
+-- 4. ortho@clinicos.local / Password123! (Ortopedia)
+--
+-- Copia el UUID de cada usuario de auth.users
+
+-- ============================================================================
+-- PASO 4: Insertar usuarios en tabla usuarios (reemplaza {UUID} con UUIDs reales)
+-- ============================================================================
+--
+-- INSERT INTO usuarios (id, email, nombre, activo, centro_id, created_by) VALUES
+-- ('{UUID_ADMIN}', 'admin@clinicos.local', 'Administrador', TRUE,
+--   '12345678-1234-5678-1234-567812345678',
+--   '00000000-0000-0000-0000-000000000000'),
+-- ('{UUID_ADMIN_STAFF}', 'staff@clinicos.local', 'Staff Administrativo', TRUE,
+--   '12345678-1234-5678-1234-567812345678',
+--   '00000000-0000-0000-0000-000000000000'),
+-- ('{UUID_PODOLOGIST}', 'podo@clinicos.local', 'Podólogo Test', TRUE,
+--   '12345678-1234-5678-1234-567812345678',
+--   '00000000-0000-0000-0000-000000000000'),
+-- ('{UUID_ORTHO}', 'ortho@clinicos.local', 'Ortopedia Test', TRUE,
+--   '12345678-1234-5678-1234-567812345678',
+--   '00000000-0000-0000-0000-000000000000');
+
+-- ============================================================================
+-- PASO 5: Asignar roles a usuarios
+-- ============================================================================
 --
 -- INSERT INTO usuarios_roles (usuario_id, rol_id) VALUES
 -- ('{UUID_ADMIN}', (SELECT id FROM roles WHERE nombre = 'Administrador del sistema')),
