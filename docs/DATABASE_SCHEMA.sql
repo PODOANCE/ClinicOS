@@ -7,11 +7,16 @@
 -- UUID fijo: 00000000-0000-0000-0000-000000000000
 -- Este usuario no puede hacer login; solo aparece en auditoría
 CREATE TABLE IF NOT EXISTS usuarios_sistema (
-  id UUID PRIMARY KEY DEFAULT '00000000-0000-0000-0000-000000000000',
-  nombre TEXT NOT NULL DEFAULT 'Sistema',
-  descripcion TEXT DEFAULT 'Usuario del sistema para cambios automáticos',
+  id UUID PRIMARY KEY,
+  nombre TEXT NOT NULL,
+  descripcion TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+-- Insertar usuario sistema (CRÍTICO: debe existir antes de otras tablas que lo referencien)
+INSERT INTO usuarios_sistema (id, nombre, descripcion) VALUES
+  ('00000000-0000-0000-0000-000000000000', 'Sistema', 'Usuario del sistema para cambios automáticos')
+ON CONFLICT (id) DO NOTHING; -- Evita error si ya existe
 
 -- Tabla: centros
 -- Objetos de configuración: sedes de la clínica
