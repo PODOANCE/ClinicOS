@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(pnpm --version)",
+      "Bash(yarn --version)",
+      "Bash(git --version)",
+      "Bash(gh --version)",
+      "Bash(claude --version)",
+      "Bash(code --version)",
+      "Bash(cursor --version)",
+      "Bash(docker --version)",
+      "Bash(supabase --version)",
+      "Bash(vercel --version)",
+      "Bash(ls -la ~/.ssh/ 2>/dev/null | grep -E \"id_rsa|id_ed25519\" || echo \"No se encontraron claves SSH privadas\")",
+      "Bash(git config *)",
+      "Bash(gh auth *)",
+      "Bash(vercel whoami *)",
+      "Bash(supabase projects *)",
+      "Bash(ruby --version)",
+      "Bash(/opt/homebrew/bin/brew --version)",
+      "Bash(/usr/local/bin/brew --version)",
+      "Bash(find /usr/local -name \"nvm.sh\" 2>/dev/null)",
+      "Bash(find /opt/homebrew -name \"nvm.sh\" 2>/dev/null)",
+      "Bash(brew --prefix)",
+      "Bash(sw_vers)",
+      "Bash(npx create-next-app@latest ClinicOS --typescript --tailwind --eslint --no-git --skip-install)",
+      "Bash(npx create-next-app@latest clinicos --typescript --tailwind --eslint --no-git --skip-install)"
+    ]
+  }
+}
