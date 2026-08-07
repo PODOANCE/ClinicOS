@@ -25,7 +25,10 @@
       "Bash(brew --prefix)",
       "Bash(sw_vers)",
       "Bash(npx create-next-app@latest ClinicOS --typescript --tailwind --eslint --no-git --skip-install)",
-      "Bash(npx create-next-app@latest clinicos --typescript --tailwind --eslint --no-git --skip-install)"
+      "Bash(npx create-next-app@latest clinicos --typescript --tailwind --eslint --no-git --skip-install)",
+      "Bash(npm install *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
     ]
   }
 }
