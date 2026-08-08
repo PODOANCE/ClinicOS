@@ -6,7 +6,7 @@ import { useUser } from '@/lib/contexts/UserContext'
 
 export function Header() {
   const router = useRouter()
-  const { email, loading } = useUser()
+  const { nombre, email, loading } = useUser()
 
   const handleLogout = async () => {
     const supabase = createClient()
@@ -26,9 +26,12 @@ export function Header() {
       <h1 style={{ fontSize: '1.25rem', fontWeight: '600', margin: 0 }}>ClinicOS</h1>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        {!loading && email && (
+        {!loading && (nombre || email) && (
           <>
-            <span style={{ fontSize: '0.875rem', color: '#666' }}>{email}</span>
+            <div style={{ textAlign: 'right', fontSize: '0.875rem', color: '#666' }}>
+              <div style={{ fontWeight: '500', color: '#000' }}>{nombre}</div>
+              <div style={{ fontSize: '0.75rem' }}>{email}</div>
+            </div>
             <button
               onClick={handleLogout}
               style={{

@@ -6,8 +6,8 @@ import { usePathname } from 'next/navigation'
 export function Navigation() {
   const pathname = usePathname()
 
-  // Áreas disponibles (V1: solo Hoy y Dashboard)
-  const areas = [
+  // Menú básico para Fase 1 (sin permisos)
+  const navItems = [
     { nombre: 'Dashboard', href: '/dashboard' },
     { nombre: 'Hoy', href: '/areas/hoy' },
   ]
@@ -19,12 +19,12 @@ export function Navigation() {
           Menú
         </h2>
         <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-          {areas.map(area => {
-            const isActive = pathname === area.href
+          {navItems.map(item => {
+            const isActive = pathname === item.href
             return (
-              <li key={area.href}>
+              <li key={item.href}>
                 <Link
-                  href={area.href}
+                  href={item.href}
                   style={{
                     display: 'block',
                     padding: '0.75rem 1rem',
@@ -42,7 +42,7 @@ export function Navigation() {
                     if (!isActive) (e.currentTarget as HTMLAnchorElement).style.backgroundColor = 'transparent'
                   }}
                 >
-                  {area.nombre}
+                  {item.nombre}
                 </Link>
               </li>
             )

@@ -13,22 +13,29 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log('Login attempt:', { email, password })
     setError('')
     setLoading(true)
 
     try {
       const supabase = createClient()
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log('Supabase client created')
+      const { error, data } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
+      console.log('Auth response:', { error, data })
+
       if (error) {
+        console.error('Login error:', error)
         setError(error.message)
       } else {
+        console.log('Login successful, redirecting...')
         router.push('/dashboard')
       }
     } catch (err) {
+      console.error('Catch error:', err)
       setError('Error en la conexión')
     } finally {
       setLoading(false)

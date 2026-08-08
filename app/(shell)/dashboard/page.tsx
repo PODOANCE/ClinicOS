@@ -6,7 +6,7 @@ export default function DashboardPage() {
   const { email, loading } = useUser()
 
   if (loading) {
-    return <div>Cargando...</div>
+    return <div style={{ padding: '2rem' }}>Cargando...</div>
   }
 
   return (
@@ -22,7 +22,10 @@ export default function DashboardPage() {
             <strong>Email:</strong> {email}
           </p>
           <p style={{ margin: '0.5rem 0', fontSize: '0.875rem', color: '#666' }}>
-            Shell Phase 1 funcional. Autenticación y navegación básica operativas.
+            ✅ Autenticado en ClinicOS
+          </p>
+          <p style={{ margin: '1rem 0 0 0', fontSize: '0.75rem', color: '#999' }}>
+            Fase 1 · Shell operativo · Autenticación y navegación básica en lugar
           </p>
         </div>
       </div>
