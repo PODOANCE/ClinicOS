@@ -46,14 +46,26 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         }
 
         // 2. Obtener perfil del usuario desde public.usuarios
-        const { data: usuario, error: usuarioError } = await supabase
+        const { data: usuarios, error: usuarioError } = await supabase
           .from('usuarios')
           .select('id, email, nombre, activo')
           .eq('id', user.id)
-          .single()
 
         if (usuarioError) {
           console.error('Error cargando usuario:', usuarioError)
+          setState(prev => ({
+            ...prev,
+            id: user.id,
+            email: user.email,
+            loading: false,
+            error: 'Error al cargar perfil',
+          }))
+          return
+        }
+
+        const usuario = usuarios?.[0]
+        if (!usuario) {
+          console.warn('Usuario no encontrado en public.usuarios')
           setState(prev => ({
             ...prev,
             id: user.id,
