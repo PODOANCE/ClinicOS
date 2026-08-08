@@ -3,6 +3,37 @@ import type { Rol, AreaPermiso } from '@/lib/types/models'
 export type Action = 'ver' | 'crear' | 'editar' | 'aprobar' | 'archivar'
 
 /**
+ * Calcula permisos efectivos combinando múltiples roles
+ * Los permisos se unen con lógica OR: si algún rol permite, el usuario puede
+ */
+export function getEffectivePermissions(roles: Rol[]): Record<string, AreaPermiso> {
+  const merged: Record<string, AreaPermiso> = {}
+
+  if (!roles || roles.length === 0) {
+    return merged
+  }
+
+  roles.forEach(role => {
+    if (!role.areas_permitidas) return
+
+    Object.entries(role.areas_permitidas).forEach(([area, permisos]) => {
+      if (!merged[area]) {
+        merged[area] = { ver: false }
+      }
+
+      // Unir permisos: si algún rol permite, el usuario puede
+      merged[area].ver = merged[area].ver || permisos.ver || false
+      merged[area].crear = merged[area].crear || permisos.crear || false
+      merged[area].editar = merged[area].editar || permisos.editar || false
+      merged[area].aprobar = merged[area].aprobar || permisos.aprobar || false
+      merged[area].ambito = permisos.ambito || merged[area].ambito
+    })
+  })
+
+  return merged
+}
+
+/**
  * Valida si un usuario (mediante sus roles) puede realizar una acción en un área
  */
 export function canUserAccess(roles: Rol[], area: string, action: Action): boolean {

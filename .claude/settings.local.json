@@ -34,7 +34,30 @@
       "Bash(gh repo *)",
       "Bash(git push *)",
       "Bash(grep -E \"\\\\.md$\")",
-      "Bash(node setup-users.js)"
+      "Bash(node setup-users.js)",
+      "Bash(node check-users.js)",
+      "Bash(node check-user-roles.js)",
+      "Bash(cat)",
+      "Read(//tmp/**)",
+      "Bash(node assign-roles.js)",
+      "Bash(node check-raw-roles.js)",
+      "Bash(node reset-admin-password.js)",
+      "Bash(node create-admin-user.js)",
+      "Bash(node setup-admin-complete.js)",
+      "Bash(kill 74772)",
+      "Bash(node create-test-user.js)",
+      "Bash(cat > *)",
+      "Bash(node create-auth-user.js)",
+      "Bash(curl -X POST https://gyusgttlwjpnwchmrjih.supabase.co/auth/v1/admin/users -H 'Content-Type: application/json' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd5dXNndHRsd2pwbndjaG1yamloIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NjEzMTk1NSwiZXhwIjoyMTAxNzA3OTU1fQ.WI8WJwz51mmdVYZmjre1A0O-I9Yip_F_0HM0vFZoRds' -d '{ *)",
+      "Bash(curl -X POST https://gyusgttlwjpnwchmrjih.supabase.co/auth/v1/admin/users -H 'Content-Type: application/json' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd5dXNndHRsd2pwbndjaG1yamloIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxMzE5NTUsImV4cCI6MjEwMTcwNzk1NX0.ZpdGl_HEZlxG06e2Yj0TUiV8NUSJd5PUN68g7NyL4Uc' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd5dXNndHRsd2pwbndjaG1yamloIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NjEzMTk1NSwiZXhwIjoyMTAxNzA3OTU1fQ.WI8WJwz51mmdVYZmjre1A0O-I9Yip_F_0HM0vFZoRds' -d '{ *)",
+      "Bash(curl -s -X POST https://gyusgttlwjpnwchmrjih.supabase.co/rest/v1/rpc/exec_sql_read -H 'Content-Type: application/json' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd5dXNndHRsd2pwbndjaG1yamloIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxMzE5NTUsImV4cCI6MjEwMTcwNzk1NX0.ZpdGl_HEZlxG06e2Yj0TUiV8NUSJd5PUN68g7NyL4Uc' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd5dXNndHRsd2pwbndjaG1yamloIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NjEzMTk1NSwiZXhwIjoyMTAxNzA3OTU1fQ.WI8WJwz51mmdVYZmjre1A0O-I9Yip_F_0HM0vFZoRds' -d '{\"query\":\"SELECT schemaname, tablename, policyname, qual, with_check FROM pg_policies WHERE schemaname = '\\\\''public'\\\\'' AND tablename IN \\('\\\\''usuarios'\\\\'', '\\\\''roles'\\\\'', '\\\\''usuarios_roles'\\\\''\\) ORDER BY tablename, policyname;\"}')",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s -X POST https://gyusgttlwjpnwchmrjih.supabase.co/rest/v1/rpc/exec_sql_read -H 'Content-Type: application/json' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd5dXNndHRsd2pwbndjaG1yamloIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxMzE5NTUsImV4cCI6MjEwMTcwNzk1NX0.ZpdGl_HEZlxG06e2Yj0TUiV8NUSJd5PUN68g7NyL4Uc' -d '{\"query\":\"SELECT schemaname, tablename, policyname, qual, with_check FROM pg_policies WHERE schemaname = '\\\\''public'\\\\'' AND tablename IN \\('\\\\''usuarios'\\\\'', '\\\\''roles'\\\\'', '\\\\''usuarios_roles'\\\\''\\) ORDER BY tablename, policyname;\"}')",
+      "Bash(node audit-rls.js)",
+      "Bash(node audit-authenticated-query.js)",
+      "Bash(node audit-policies-direct.js)",
+      "Bash(curl -s http://localhost:3000 -w '\\\\n%{http_code}\\\\n')",
+      "Bash(node audit-users-in-auth.js)"
     ]
   }
 }
