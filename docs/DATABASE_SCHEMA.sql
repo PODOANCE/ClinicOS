@@ -128,6 +128,7 @@ CREATE INDEX IF NOT EXISTS idx_tareas_fecha_limite ON tareas(fecha_limite);
 -- Tabla: roles
 -- Lectura pública: todos los usuarios necesitan leer roles para resolver permisos
 ALTER TABLE roles ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "roles_lectura_publica" ON roles;
 CREATE POLICY "roles_lectura_publica" ON roles
   FOR SELECT USING (TRUE);
 
@@ -139,9 +140,11 @@ CREATE POLICY "roles_lectura_publica" ON roles
 -- EVOLUCIÓN: En Fase 3+, se agregará validación por rol (e.g., solo admin puede ver todo)
 ALTER TABLE usuarios ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "usuarios_lectura_activos" ON usuarios;
 CREATE POLICY "usuarios_lectura_activos" ON usuarios
   FOR SELECT USING (activo = TRUE);
 
+DROP POLICY IF EXISTS "usuarios_editar_propio_perfil" ON usuarios;
 CREATE POLICY "usuarios_editar_propio_perfil" ON usuarios
   FOR UPDATE USING (id = auth.uid());
 
@@ -150,6 +153,7 @@ CREATE POLICY "usuarios_editar_propio_perfil" ON usuarios
 -- Esta restricción es permanente: necesaria para auditoría y control de acceso
 ALTER TABLE usuarios_roles ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "usuarios_ver_propios_roles" ON usuarios_roles;
 CREATE POLICY "usuarios_ver_propios_roles" ON usuarios_roles
   FOR SELECT USING (usuario_id = auth.uid());
 
@@ -160,11 +164,14 @@ CREATE POLICY "usuarios_ver_propios_roles" ON usuarios_roles
 -- EVOLUCIÓN: Cuando se construya el Área de Hoy, se agregará validación por rol
 ALTER TABLE tareas ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "tareas_ver_propias" ON tareas;
 CREATE POLICY "tareas_ver_propias" ON tareas
   FOR SELECT USING (usuario_id = auth.uid());
 
+DROP POLICY IF EXISTS "tareas_crear_propias" ON tareas;
 CREATE POLICY "tareas_crear_propias" ON tareas
   FOR INSERT WITH CHECK (usuario_id = auth.uid());
 
+DROP POLICY IF EXISTS "tareas_editar_propias" ON tareas;
 CREATE POLICY "tareas_editar_propias" ON tareas
   FOR UPDATE USING (usuario_id = auth.uid());

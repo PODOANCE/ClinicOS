@@ -28,7 +28,13 @@
       "Bash(npx create-next-app@latest clinicos --typescript --tailwind --eslint --no-git --skip-install)",
       "Bash(npm install *)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(npm run *)",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(gh repo *)",
+      "Bash(git push *)",
+      "Bash(grep -E \"\\\\.md$\")",
+      "Bash(node setup-users.js)"
     ]
   }
 }
