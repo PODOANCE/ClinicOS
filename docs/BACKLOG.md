@@ -20,6 +20,8 @@
 
 **Entrada automática de datos en las Áreas.** La v1 de cada Área usa entrada manual. La entrada automática —facturas que llegan por email o Drive, lectura de PDF con IA para extraer proveedor/importe/IVA, y equivalentes en otras Áreas— es una mejora posterior que se diseñará con su propio análisis (integración con sistemas externos, revisión humana de lo detectado). Aparcada para no bloquear la primera Área ni comprometer arquitectura de integraciones antes de tiempo.
 
+> **Excepción (DECISIONS, Decisión F5, 2026-08-11):** desbloqueada específicamente para el Área de Facturas — entrada por carpeta de Google Drive (`FACTURAS/ENTRADA`) + lectura de PDF con IA. El resto de Áreas sigue aparcado bajo este mismo criterio hasta que exista un caso real propio que lo justifique.
+
 *(Aquí van las demás ideas de funcionalidad que surjan durante el desarrollo y no toque construir todavía.)*
 
 ---

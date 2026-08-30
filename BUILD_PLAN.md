@@ -1,36 +1,36 @@
 # ClinicOS - Plan de Construcción
 
 **Versión**: 0.1.0  
-**Última Actualización**: 2026-08-08  
-**Estado Actual**: Fase 1 ✅ Completada
+**Última Actualización**: 2026-08-17  
+**Estado Actual**: Fase 1 ✅ Shell + Autenticación + Roles + Permisos (COMPLETADA)
 
 ---
 
-## Fase 1: Shell Operativo ✅
+## Fase 1: Shell + Autenticación + Roles + Permisos ✅ COMPLETADA
 
-### Objetivos
-- [x] Autenticación básica con Supabase Auth
+### Objetivos ✅ Cumplidos
+- [x] Autenticación con Supabase Auth
 - [x] Estructura de shell layout (Header + Navigation + Content)
-- [x] Dashboard básico funcional
+- [x] Dashboard funcional
 - [x] Session management
 - [x] Navegación sin errores de runtime
+- [x] Carga de roles y permisos desde BD
+- [x] Filtrado dinámico de navegación según permisos
+- [x] Datos completos del usuario
+- [x] RLS funcionando
 
 ### Implementado
 - ✅ **Autenticación**: Login/logout con email y contraseña vía Supabase Auth
-- ✅ **UserContext**: Contexto React para gestionar sesión de usuario (id, email, loading)
+- ✅ **UserContext**: Contexto React con sesión, roles, permisos, centro_id
 - ✅ **Shell Layout**: `app/(shell)/layout.tsx` con Header + Navigation + Content
-- ✅ **Header**: Componente que muestra nombre del usuario y botón logout
-- ✅ **Navigation**: Menú sidebar básico con links a Dashboard y Hoy
-- ✅ **Dashboard**: Página de bienvenida mostrando estado de sesión
-- ✅ **Dev Server**: Configuración Next.js con Turbopack
+- ✅ **Header**: Muestra nombre del usuario y botón logout
+- ✅ **Navigation**: Menú sidebar filtrado por permisos reales del usuario
+- ✅ **Dashboard**: Perfil completo, roles asignados, áreas accesibles
+- ✅ **Módulo Hoy**: Tareas internas (crear, editar, eliminar, completar, reabrir)
+- ✅ **Roles & Permisos**: 6 usuarios con roles definidos, RLS en BD
+- ✅ **RLS**: Políticas de fila para seguridad de datos por usuario/rol
 - ✅ **TypeScript**: Sin errores de compilación
-
-### No Implementado (Deferred to Phase 2)
-- ❌ Carga de roles y permisos desde BD
-- ❌ Validación de acceso por permisos
-- ❌ Filtrado de navegación según roles
-- ❌ Protección de rutas por middleware
-- ❌ Datos completos del usuario desde tabla `usuarios`
+- ✅ **Build**: `npm run build` pasa exitosamente
 
 ### Arquitectura
 ```
@@ -52,77 +52,166 @@ lib/
 
 ### Base de Datos (Fase 1)
 - ✅ Tabla `auth.users` (Supabase Auth)
-- ⏳ Tabla `usuarios` (no usada en Fase 1 por RLS)
-- ⏳ Tabla `roles` (no usada en Fase 1)
-- ⏳ Tabla `usuarios_roles` (no usada en Fase 1)
+- ✅ Tabla `usuarios` (con RLS funcionando)
+- ✅ Tabla `roles` (con 4 roles definidos)
+- ✅ Tabla `usuarios_roles` (6 usuarios con roles asignados)
+- ✅ Tabla `centros` (centros clínicos)
+- ✅ Tabla `tareas` (Módulo Hoy)
 
 ### Seguridad
-- ✅ Row Level Security habilitado (pero no usado en Fase 1)
+- ✅ Row Level Security habilitado y funcionando
+- ✅ Políticas RLS en todas las tablas críticas
 - ✅ No almacenar contraseñas en cliente
 - ✅ Usar Supabase Auth para auth token management
-- ⏳ Middleware de protección de rutas (Fase 2)
+- ✅ Middleware de protección de rutas implementado
+- ✅ Función `private.has_role()` para validación de permisos
 
 ### Testing
-- ✅ Usuario de prueba: `admin.test@clinicos.local` / `TestAdmin123!@#`
-- ✅ Login funciona y redirige a dashboard
-- ✅ No hay errores en consola (excepto recursos 404)
+- ✅ 6 usuarios reales completamente testeados
+- ✅ Login funciona para todos los usuarios
+- ✅ Roles se cargan correctamente
+- ✅ Permisos se aplican según rol
+- ✅ Navigation se filtra por permisos
+- ✅ No hay errores en consola
+- ✅ `npm run build` exitoso
 
 ---
 
-## Fase 2: Permisos y Roles ⏳
+## Fase 2: Módulo Facturas ✅ PARCIALMENTE COMPLETO (2026-08-30)
 
-### Objetivos
-- [ ] Cargar roles del usuario desde BD
-- [ ] Calcular matriz de permisos
-- [ ] Filtrar navegación por permisos
-- [ ] Proteger rutas por middleware
-- [ ] Validar permisos en components
+**Versión actualizada**: 0.2.0
 
-### Tareas
-1. Restaurar datos de usuario desde tabla `usuarios`
-2. Cargar `usuarios_roles` y mapear con `roles`
-3. Implementar `getAccessibleAreas()` con datos de BD
-4. Actualizar Navigation para filtrar por permisos
-5. Re-habilitar y mejorar middleware
-6. Crear validadores de permiso en componentes
+### Bloque A: Base de Datos ✅ COMPLETADO (2026-08-17)
+- ✅ Schema `private` + función `private.has_role()`
+- ✅ 6 nuevas tablas con índices y constraints
+- ✅ RLS policies en todas las tablas
+- ✅ RPC `claim_factura_para_procesamiento()` para service_role
+- ✅ Actor técnico SISTEMA_CRON en usuarios_sistema
+
+### Bloque 0: Google Drive + OAuth2 ✅ VALIDADO
+- ✅ OAuth2 con Google Drive
+- ✅ Listado de archivos
+- ✅ Creación, lectura, movimiento de PDFs
+- ✅ Preservación de file_id
+- ✅ Service Account descartada
+
+### Bloque B: Integración Funcional ✅ PARCIALMENTE COMPLETO
+
+**B.2: Detección y Registro** ✅ COMPLETO (2026-08-29)
+- [x] Detección de PDFs nuevos en ENTRADA
+- [x] Registro automático en tabla `facturas`
+- [x] Idempotencia por `UNIQUE(drive_file_id)`
+- [x] `service_role` para operaciones servidor
+- [x] Estados: PENDIENTE
+
+**B.3: Lectura y Extracción con IA** ✅ COMPLETO (2026-08-30)
+- [x] Descarga segura de PDF desde Drive
+- [x] Extracción de texto (detección de escaneos)
+- [x] Claude Vision para extracción de datos
+- [x] Validación matemática determinista
+- [x] Almacenamiento en `facturas_extraccion_ia`
+- [x] Estados: LECTURA_PENDIENTE → LECTURA_EXITOSA → VALIDACION_EXITOSA
+- [x] Auditoría de respuestas IA
+
+**B.3.5: Asignación de Proveedor** ✅ COMPLETO (2026-08-30)
+- [x] Búsqueda por CIF/NIF
+- [x] Idempotencia controlada (no error DB)
+- [x] Asignación automática si existe
+
+**B.4: UI de Facturas** ✅ COMPLETO (2026-08-30)
+- [x] Lista de facturas con tabla
+- [x] Filtro por estado
+- [x] Muestra proveedor, fecha, total
+- [x] Códigos de color por estado
+- [x] Endpoint `/api/facturas/listar`
+- [x] Página `/app/(shell)/facturas`
+
+**B.5: Conciliación** 🟡 SIGUIENTE
+- [ ] Importación CSV bancario
+- [ ] Conciliación automática
+- [ ] Gestión de incidencias
+- [ ] Estado independiente para gestoría
+
+**Objetivo anterior**: Procesar PDFs de Drive, extraer datos con IA, clasificar, conciliar, gestionar incidencias.
+
+**Estructura Google Drive**:
+```
+FACTURAS/
+├── ENTRADA/
+├── SIN CLASIFICAR/
+└── 2026/
+    └── MES/
+        ├── PENDIENTES DE ENVIAR A GESTORÍA/
+        └── ENVIADAS A GESTORÍA/
+```
+
+**Pasos de implementación**:
+1. [ ] Integración productiva con Google Drive
+2. [ ] Detección de nuevos PDFs en ENTRADA
+3. [ ] Motor de procesamiento semanal/manual
+4. [ ] Procesamiento por lotes (idempotente)
+5. [ ] IA (Claude API) para leer y extraer datos
+6. [ ] Clasificación automática año/mes
+7. [ ] Movimiento automático de archivos
+8. [ ] Interfaz de Facturas (vista, filtros, estados)
+9. [ ] Importación CSV para banco
+10. [ ] Conciliación factura ↔ movimiento
+11. [ ] Gestión de incidencias
+12. [ ] Estado independiente para gestoría
+13. [ ] Integración con Hoy para incidencias críticas
 
 ---
 
-## Fase 3: Módulos de Negocio ⏳
+## Fase 3: Módulos de Negocio Futuros ⏳
 
 ### Áreas Planificadas
-- [ ] Hoy - Citas y tareas del día
-- [ ] Facturas - Gestión de facturas
-- [ ] Stock - Gestión de inventario
-- [ ] Leads - CRM básico
-- [ ] Vacaciones - Gestión de licencias
+- ✅ **Hoy** - ✅ Tareas internas (COMPLETADA) - NO incluye citas clínicas
+- 🟡 **Facturas** - ✅ Base datos + OAuth2 validado (BLOQUE B en curso)
+- [ ] **Stock** - Gestión de inventario
+- ❌ **Pacientes/Citas/CRM** - Gestionado por Organízate (no en ClinicOS)
+- ❌ **Facturación Clínica** - Gestionada por Organízate (no en ClinicOS)
+- [ ] **Vacaciones** - Gestión de licencias
 
 ---
 
-## Guía de Credenciales
+## Usuarios Definitivos del Sistema
 
-### Usuarios de Prueba (Fase 1)
-```
-Email:    admin.test@clinicos.local
-Password: TestAdmin123!@#
-Rol:      (none - solo Auth en Fase 1)
-```
+**NO añadir usuarios adicionales.**
 
-### Usuarios Preexistentes (BD - No usados en Fase 1)
-- admin@podologiarivas.com
-- info@podologiarivas.com
-- ortopedia@podologiarivas.com
-- podologia@podologiarivas.com
+1. **PODOANCE SL** (Organización)
+   - Email: admin@podologiarivas.com
+   - Rol: Administrador del sistema
+
+2. **Sara Gómez Velázquez**
+   - Email: s.gomez@podologiarivas.com
+   - Rol: Administración
+
+3. **Álvaro Espada Bermejo**
+   - Email: a.espada@podologiarivas.com
+   - Rol: Administración
+
+4. **Belén Iglesias Arias**
+   - Email: b.iglesias@podologiarivas.com
+   - Rol: Podólogo
+
+5. **Paula Castillo Carpio**
+   - Email: p.castillo@podologiarivas.com
+   - Rol: Podólogo
+
+6. **Patricia Jerónimo Hernández**
+   - Email: p.jeronimo@podologiarivas.com
+   - Rol: Ortopeda
 
 ---
 
 ## Notas Técnicas
 
-### Por Qué Fase 1 Simplificado
-1. RLS policies estaban bloqueando inserciones en `usuarios`
-2. Crear usuarios con rol completo requería actualizar BD
-3. Enfoque pragmático: Auth funciona sin BD en Fase 1
-4. Separación clara: Fase 1 = autenticación, Fase 2 = autorización
+### Arquitectura de Fase 1
+1. Separación clara: Autenticación (Auth) ≠ Autorización (Roles/Permisos)
+2. Fuente única de verdad: auth.users (Supabase Auth)
+3. Sincronización automática: Trigger PostgreSQL
+4. RLS obligatorio: Todas las tablas críticas
+5. Permisos explícitos: No automáticos, asignados manualmente
 
 ### Variables de Entorno Necesarias
 ```
@@ -137,10 +226,26 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 ---
 
-## Próximos Pasos (Fase 2)
+## Próximos Pasos (Fase 2: Facturas Bloque B)
 
-1. **BD**: Revisar RLS policies y permitir inserciones autorizadas
-2. **Contexto**: Restaurar carga de roles en UserContext
-3. **Validación**: Implementar matriz de permisos
-4. **Navegación**: Filtrar menú por permisos
-5. **Rutas**: Proteger con middleware y componentes
+**Orden de implementación**:
+
+1. Integración productiva con Google Drive
+2. Detección de nuevos PDFs en carpeta ENTRADA
+3. Motor de procesamiento semanal/manual
+4. Procesamiento por lotes con idempotencia
+5. IA (Claude API) para lectura y extracción de datos
+6. Clasificación automática año/mes
+7. Movimiento automático de archivos en Drive
+8. Interfaz de usuario para Facturas (vista, filtros, estados)
+9. Importación de CSV bancario
+10. Conciliación automática
+11. Gestión de incidencias
+12. Estado independiente para gestoría
+13. Integración con módulo Hoy si aplica
+
+**NO implementar**:
+- Gestión de pacientes/citas (Organízate)
+- Facturación clínica (Organízate)
+- Nuevos usuarios
+- Modificaciones en Fase 1 (Shell, Auth, Roles, Permisos, Hoy)

@@ -1,12 +1,12 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/browser'
 import { useUser } from '@/lib/contexts/UserContext'
 
 export function Header() {
   const router = useRouter()
-  const { nombre, email, loading } = useUser()
+  const { user, loading } = useUser()
 
   const handleLogout = async () => {
     const supabase = createClient()
@@ -26,11 +26,10 @@ export function Header() {
       <h1 style={{ fontSize: '1.25rem', fontWeight: '600', margin: 0 }}>ClinicOS</h1>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        {!loading && (nombre || email) && (
+        {!loading && user && (
           <>
             <div style={{ textAlign: 'right', fontSize: '0.875rem', color: '#666' }}>
-              <div style={{ fontWeight: '500', color: '#000' }}>{nombre}</div>
-              <div style={{ fontSize: '0.75rem' }}>{email}</div>
+              <div style={{ fontSize: '0.75rem' }}>{user.email}</div>
             </div>
             <button
               onClick={handleLogout}

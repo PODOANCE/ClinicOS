@@ -34,6 +34,8 @@ El stack está decidido. Aquí se explica cada pieza desde la arquitectura: qué
 
 **El almacenamiento de archivos** — parte de Supabase. Los documentos (PDF de facturas, contratos, justificantes) se guardan en el sistema de archivos estándar que Supabase ya ofrece, y el objeto Documento solo guarda la referencia. No se inventa un sistema de archivos propio.
 
+**Excepción aprobada — Área de Facturas** (DECISIONS, Decisión F1, 2026-08-11). El Área de Facturas es la única que no sigue esta regla: sus PDFs viven en Google Drive, no en Supabase Storage, por necesidad de negocio (control documental compartido con la gestoría externa). Supabase guarda solo metadatos, estados y la referencia (`drive_file_id`) al documento. Ninguna otra Área se aparta de la regla general sin la misma justificación explícita registrada en DECISIONS.
+
 El hilo común de las cuatro elecciones: **ninguna es exótica, todas son la opción por defecto de la industria**. Eso no es falta de ambición; es la decisión deliberada que mantiene el proyecto vivo y mantenible a largo plazo por una persona con ayuda de IA.
 
 ## 3. La estructura de la casa

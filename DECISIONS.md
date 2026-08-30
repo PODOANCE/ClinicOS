@@ -1,8 +1,8 @@
-# Decisiones Arquitectónicas - ClinicOS Fase 1
+# Decisiones Arquitectónicas - ClinicOS
 
-**Fecha**: 2026-08-08  
-**Versión**: 1.0  
-**Estado**: En Implementación
+**Fecha**: 2026-08-30  
+**Versión**: 2.0  
+**Estado**: Fase 1 ✅ + Bloque A ✅ + Bloque B.2 ✅ + Bloque B.3 ✅
 
 ---
 
@@ -157,6 +157,8 @@ function getEffectivePermissions(roles: Rol[]): Record<string, AreaPermiso> {
 
 ## Decisión 6: Protección de Rutas - Servidor + Cliente
 
+> ⚠️ **REVISADA (2026-08-09)**: Middleware fue eliminado deliberadamente en Fase 1 simplificada. Protección actualmente solo en cliente (UserContext redirige). Middleware se reintroducirá en Fase 2 si/cuando sea necesario.
+
 **Capas de protección**:
 
 1. **Servidor (middleware.ts)** - Verificación fuerte
@@ -254,7 +256,9 @@ USING (true);  -- O: USING (auth.uid() IS NOT NULL) si requiere auth
 
 ## Decisión 9: UserContext Restaurado
 
-**Propósito**: Proporcionar datos de usuario y permisos al árbol de componentes.
+> ⚠️ **REVISADA (2026-08-09)**: En Fase 1 simplificada, UserContext carga solo `{user: {id, email}, loading}`. Carga de roles, permisos y datos completos del usuario será en Fase 2 cuando sea necesario.
+
+**Propósito**: Proporcionar datos de usuario al árbol de componentes.
 
 **Datos que carga**:
 ```typescript
@@ -298,6 +302,8 @@ const permisos = getEffectivePermissions(roles);
 ---
 
 ## Decisión 10: Navigation - Filtrado por Permisos Reales
+
+> ⚠️ **REVISADA (2026-08-09)**: En Fase 1 simplificada, Navigation solo muestra Dashboard. Filtrado dinámico por permisos se implementará en Fase 2 cuando existan Áreas que lo requieran.
 
 **Antes (Fase 0 - Error)**:
 ```typescript
@@ -362,8 +368,199 @@ const navItems = [
 
 ---
 
+## Decisiones — Módulo Facturas (Google Drive + IA)
+
+**Fecha**: 2026-08-11
+**Estado**: Aprobadas por Product Owner, pendientes de implementación
+
+### Decisión F1: Google Drive como repositorio documental de Facturas
+
+**Contexto**: 05-ARCHITECTURE.md (sección 2) establece que los documentos se almacenan en Supabase Storage. El Área de Facturas necesita que los PDFs vivan en Google Drive, no en Supabase.
+
+**Decisión**: Para el Área de Facturas, Google Drive es el repositorio principal de los PDFs originales. Supabase almacena únicamente metadatos, datos extraídos, estados, conciliaciones, incidencias y la referencia (`drive_file_id`) al documento en Drive. No se duplica el archivo en dos sistemas.
+
+**Alcance**: Decisión específica del Área de Facturas. No cambia el comportamiento por defecto (Supabase Storage) para el resto de la plataforma, salvo que una futura Área lo justifique igual y se registre aquí.
+
+Excepción reflejada en 05-ARCHITECTURE.md, sección 2.
+
+### Decisión F2: Cuenta de Google Drive compartida (no Workspace)
+
+**Decisión**: El repositorio vive en una cuenta de Google Drive normal (no Google Workspace), propiedad de PODOANCE SL, con acceso humano inicial para PODOANCE SL y Sara Gómez Velázquez (Álvaro Espada Bermejo, pendiente de confirmar).
+
+**Mecanismo técnico**: ClinicOS accede vía una cuenta de servicio (Service Account) de Google Cloud, a la que se comparte la carpeta raíz `FACTURAS` con permiso de Editor desde la cuenta de PODOANCE SL. No se usa OAuth2 interactivo como mecanismo principal (ver informe de arquitectura para el análisis completo y la alternativa de respaldo si la cuota de la cuenta de servicio resultara un problema en la práctica).
+
+### Decisión F3: Nuevos objetos del modelo de datos
+
+**Decisión**: Se incorporan al modelo de datos común (03-DATA_MODEL.md):
+- **Movimiento bancario** *(operativo)* — un pago/cobro real de la empresa a justificar.
+- **Categoría de gasto** *(maestro, compartido)* — clasificación económica del gasto, compartida por Facturas y el futuro Panel 360.
+
+La relación Factura ↔ Movimiento bancario es de muchos a muchos, mediada por el objeto Conciliación, propio del Área de Facturas.
+
+Esta decisión formaliza lo que `FACTURAS-diseno-funcional.md` (secciones 0.1–0.3) ya daba por aprobado y que nunca llegó a registrarse. Referencia a la "decisión 047" citada en `FACTURAS-especificacion-funcional.md` y `FACTURAS-diseno-funcional.md`: no existe ningún registro numerado 047 en este documento ni en ningún otro del proyecto; se salda esa referencia pendiente con esta entrada.
+
+Reflejado en 03-DATA_MODEL.md, secciones 2, 3 y 5.
+
+### Decisión F4: La IA es núcleo de la v1 de Facturas
+
+**Decisión**: La lectura, interpretación, clasificación y propuesta de conciliación por IA no es una mejora futura del Área de Facturas: es parte esencial de su v1. La IA nunca inventa datos ni conciliaciones; ante confianza insuficiente, genera una incidencia y no decide.
+
+Formaliza la excepción ya aprobada en `FACTURAS-diseno-funcional.md`, sección 0.4.
+
+### Decisión F5: Entrada automática por Drive + IA, desbloqueada para Facturas
+
+**Contexto**: `BACKLOG.md` tenía aparcada la idea de "entrada automática de datos... facturas que llegan por email o Drive, lectura de PDF con IA" como mejora futura, para no comprometer la arquitectura de integraciones antes de tiempo.
+
+**Decisión**: Se desbloquea específicamente para el Área de Facturas. El resto de Áreas sigue con entrada manual en su v1, salvo que se decida lo contrario caso por caso.
+
+Reflejado en BACKLOG.md.
+
+### Decisión F6: Significado de "Aprobar" en Facturas
+
+**Decisión**: "Aprobar" en el Área de Facturas significa revisar/validar que la factura está correctamente tratada dentro del flujo interno y puede avanzar hacia gestoría. No implica autorizar, ejecutar o validar ningún pago o transferencia bancaria — ClinicOS no gestiona pagos.
+
+### Decisión F7: Estructura de Google Drive y nomenclatura
+
+**Decisión**: Estructura de carpetas:
+
+```
+FACTURAS/
+├── ENTRADA/                                  (sin procesar)
+├── SIN CLASIFICAR/                           (procesada pero sin datos suficientes)
+└── {AÑO}/
+    └── {MES en dos dígitos} - {Nombre mes}/
+        ├── PENDIENTES DE ENVIAR A GESTORÍA/
+        └── ENVIADAS A GESTORÍA/
+```
+
+Nomenclatura obligatoria: `PENDIENTES DE ENVIAR A GESTORÍA` y `ENVIADAS A GESTORÍA`. Prohibido usar "Subidas" o cualquier término que confunda "estar en Drive" con "enviada a gestoría".
+
+### Decisión F8: Tres ejes de estado independientes
+
+**Decisión**: Toda factura tiene tres estados independientes, que nunca se mezclan ni se infieren uno del otro:
+- **Lectura**: pendiente de procesar / procesada / error de lectura.
+- **Conciliación**: no conciliada / conciliada automática / pendiente de revisión / conciliada manual.
+- **Gestoría**: pendiente de enviar a gestoría / enviada a gestoría.
+
+La carpeta de Drive en la que vive el PDF refleja únicamente el eje de gestoría (y, transitoriamente, el de lectura mientras está en ENTRADA/SIN CLASIFICAR).
+
+---
+
 ## Referencias
 
 - **AUDIT_REPORT.md** - Hallazgos técnicos
 - **BUILD_PLAN.md** - Plan de fases
 - **RLS Documentation** - https://supabase.com/docs/guides/auth/row-level-security
+- **docs/FACTURAS-especificacion-funcional.md**, **docs/FACTURAS-diseno-funcional.md**, **docs/FACTURAS-handoff-desarrollo.md** — documentación funcional del Área de Facturas
+
+---
+
+## Decisión 9: Bloque B.3 - IA Interpreta, Backend Valida (2026-08-30)
+
+**Principio Fundamental**: La IA NO es autoridad final. Claude devuelve datos estructurados; nuestro código decide si son válidos.
+
+**Flujo de Responsabilidades**:
+```
+PDF → Texto → Claude → JSON
+         ↓
+    LECTURA_EXITOSA (Claude respondió)
+         ↓
+    Backend: Validación determinista
+         ↓
+    ├─ Válido   → VALIDACION_EXITOSA ✓
+    └─ Inválido → REVISION_MANUAL (requiere humano)
+```
+
+**Decisiones concretas**:
+
+### 9.1 La IA NO escribe en Supabase
+- ❌ Claude NO tiene acceso directo a BD
+- ❌ Claude NO decide qué datos guardar
+- ✅ Claude devuelve JSON estructurado
+- ✅ Backend valida antes de guardar
+
+### 9.2 Conservar respuesta JSON bruta de IA
+- `facturas_extraccion_ia.respuesta_json` → JSON exacto de Claude
+- `facturas_extraccion_ia.datos_validados` → JSON después de pasar reglas
+- Permite auditoría, depuración y reentrenamiento
+
+### 9.3 Validación matemática determinista
+- Tolerancia: 0.01€ en suma (base + iva ≈ total)
+- Importes no negativos
+- Fechas coherentes (vencimiento ≥ emisión)
+- Tipo IVA dentro de 0-100%
+- No confiamos en la IA para matemáticas
+
+### 9.4 Service Role solo en servidor
+- ✅ `createAdminClient()` en `/api/facturas/procesar-lectura` (Next.js Route Handler)
+- ❌ Nunca enviar service_role al cliente (React component)
+- Protege RLS; automatización de servidor > sesión de usuario
+
+### 9.5 PDFs se procesan en memoria
+- ✅ Buffer en RAM durante extracción
+- ❌ No guardamos PDF en disco (Supabase lo guarda en Drive)
+- Seguridad: PDF nunca toca servidor
+
+### 9.6 Detección de PDFs escaneados
+- `pdf-parse` extrae texto → si < 100 caracteres → NULL
+- NULL → flujo pasa a REVISION_MANUAL (requerirá OCR futuro)
+- No forzamos procesamiento de escaneos sin capa de texto
+
+### 9.7 Idempotencia por UNIQUE(factura_id)
+- `facturas_extraccion_ia(factura_id UNIQUE)`
+- Segunda ejecución → duplicate key
+- ⚠️ TODO B.3.5: Devolver estado controlado en lugar de exponer error DB
+
+---
+
+## Decisión 10: Estados de Lectura Granulares (2026-08-30)
+
+**Estados de `factura_estado_lectura` enum**:
+
+```
+PENDIENTE
+   ↓
+LECTURA_PENDIENTE (comienza procesamiento)
+   ↓
+LECTURA_EXITOSA (Claude devolvió JSON válido)
+   ├─ ✓ → VALIDACION_EXITOSA (datos pasan reglas)
+   └─ ✗ → REVISION_MANUAL (datos inconsistentes)
+
+ERROR_LECTURA (fallo técnico: OAuth, API, PDF corrupto)
+   → permite reintento automático
+```
+
+**Semántica**:
+- `PENDIENTE`: Detectada en B.2, sin procesar aún
+- `LECTURA_EXITOSA`: IA respondió; ahora valida backend
+- `VALIDACION_EXITOSA`: Datos matemáticamente válidos, listos para B.4
+- `REVISION_MANUAL`: IA respondió pero datos son inconsistentes (humano revisa)
+- `ERROR_LECTURA`: Fallo técnico (reintentable, no terminal)
+
+---
+
+## Decisión 11: Tabla `facturas_extraccion_ia` (2026-08-30)
+
+**Propósito**: Auditoría inmutable de lo que Claude extrajo de cada PDF.
+
+**Estructura**:
+```sql
+CREATE TABLE facturas_extraccion_ia (
+  id UUID PRIMARY KEY,
+  factura_id UUID UNIQUE REFERENCES facturas(id),
+  respuesta_json JSONB,        -- JSON bruto de Claude (auditoría)
+  datos_validados JSONB,       -- JSON después pasar validación (NULL si error)
+  errores_validacion TEXT[],   -- Array de mensajes si validación falla
+  creado_en TIMESTAMP,
+  actualizado_en TIMESTAMP
+);
+```
+
+**Campos**:
+- `respuesta_json`: Exacto output de Claude; **nunca modificar**
+- `datos_validados`: Copia si pasa validación; NULL si no
+- `errores_validacion`: {"campo": "...", "mensaje": "..."} si hay inconsistencias
+- `factura_id UNIQUE`: Protege idempotencia; detecta reprocesamiento
+
+---
+

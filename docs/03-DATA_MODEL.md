@@ -63,6 +63,8 @@ Todos los objetos globales de la plataforma, con su familia, su tipo (maestro u 
 - **Lead** *(operativo)* — un posible paciente que ha mostrado interés y todavía no es paciente. El objeto central del Área de Leads.
 - **Solicitud de vacaciones** *(operativo)* — una petición de ausencia de un empleado, con sus fechas y su estado de aprobación. El objeto central del Área de Vacaciones.
 - **Documento** *(operativo)* — un archivo adjunto (un PDF de factura, un contrato, un justificante) asociado a otro objeto.
+- **Movimiento bancario** *(operativo)* — un pago o cobro real de la empresa, pendiente de quedar justificado con una factura o con una explicación. Objeto central del mecanismo de conciliación del Área de Facturas.
+- **Categoría de gasto** *(maestro)* — la clasificación económica de un gasto. Compartida por Facturas y por el futuro Panel 360.
 
 **Objetos de configuración**
 
@@ -92,6 +94,8 @@ El mapa mental de cómo se conecta todo, en lenguaje humano. Esta es la sección
 - Una **Factura** puede tener uno o varios **Documentos** asociados (el PDF original, por ejemplo).
 - Un **Producto** puede comprarse a varios **Proveedores** distintos. Normalmente hay uno habitual, pero el modelo nunca asume que solo existe uno: la relación entre Producto y Proveedor es de muchos a muchos desde el principio.
 - Tanto Facturas como Stock miran a los **mismos** Proveedores: no hay dos listas de proveedores.
+- Una **Factura** puede relacionarse con uno o varios **Movimientos bancarios**, y un **Movimiento bancario** puede justificar una o varias **Facturas**: es una relación de muchos a muchos, nunca uno a uno. Esa relación es la Conciliación, propia del Área de Facturas.
+- Una **Factura** tiene una o varias **Categorías de gasto** asignadas, derivadas de su clasificación económica.
 
 **En torno a las personas de la clínica**
 
@@ -286,9 +290,34 @@ Qué guarda y por qué:
 
 Mientras haya una sola sede, este objeto existe pero apenas se nota: todos los objetos apuntan al mismo centro. El día que haya una segunda, la separación ya está hecha y no hay que migrar nada.
 
+### 5.9 Movimiento bancario *(operativo)*
+
+*(Añadido — DECISIONS, Decisión F3, 2026-08-11)*
+
+Un pago o cobro real de la empresa, aportado para poder conciliarlo con las facturas que lo justifican. Objeto central del motor de conciliación del Área de Facturas.
+
+Qué guarda y por qué:
+- **Fecha** — cuándo se produjo el movimiento.
+- **Importe** — cantidad y sentido (cargo/abono).
+- **Concepto** — el texto tal como lo aporta el banco; base para la conciliación y para detectar duplicados.
+- **Huella** (fecha + importe + concepto) — para no registrar el mismo movimiento dos veces si se importa el mismo extracto más de una vez.
+- **Estado** — pendiente de justificar, conciliado, justificado sin factura (una comisión, un impuesto…), o en incidencia. El recorrido exacto es comportamiento y se define al construir el Área de Facturas.
+
+### 5.10 Categoría de gasto *(maestro)*
+
+*(Añadido — DECISIONS, Decisión F3, 2026-08-11)*
+
+La clasificación económica de un gasto. Compartida por Facturas y por el futuro Panel 360: existe una sola vez, como cualquier objeto maestro (principio 1.1).
+
+Qué guarda y por qué:
+- **Nombre** — cómo se identifica ("Suministros", "Material clínico", "Alquiler"…).
+- **Estado (activo/archivado)**.
+
+El sistema aprende a asociar patrones de proveedor o concepto con una categoría a partir de las correcciones de una persona; ese aprendizaje es comportamiento del Área de Facturas, no del objeto en sí.
+
 ---
 
-*Fin de la sección 5, cerrada y validada.*
+*Fin de la sección 5, cerrada y validada. Objetos 5.9 y 5.10 incorporados el 2026-08-11 (DECISIONS, Decisión F3).*
 
 ---
 
