@@ -619,3 +619,68 @@ Auditoría completa: "Claude dijo 1000€, pero Sara Gómez lo corrigió a 1050�
 
 ---
 
+## Decisión 13: Revisión Selectiva y Flujos Bifurcados (2026-08-30)
+
+**Problema**: No todas las facturas requieren aprobación humana explícita. Una factura con `VALIDACION_EXITOSA` está matemáticamente correcta; forzar aprobación humana es ineficiente.
+
+**Solución**: Bifurcar en B.4.2 según estado_lectura.
+
+**Estados y flujos**:
+
+```
+VALIDACION_EXITOSA (datos correctos, no hay inconsistencias)
+    ↓
+[Automático: sigue flujo sin intervención]
+    ↓
+B.5 (conciliación)
+
+vs.
+
+REVISION_MANUAL (IA respondió pero datos inconsistentes)
+    ↓
+PENDIENTE_REVISION
+    ↓
+Humano revisa/corrige en B.4.2
+    ↓
+APROBADA_MANUALMENTE | RECHAZADA
+    ↓
+B.5 (conciliación) o rechazo
+```
+
+**Invariantes**:
+- ✅ Facturas en VALIDACION_EXITOSA **no pasan por PENDIENTE_REVISION** automáticamente
+- ✅ Facturas en REVISION_MANUAL **sí deben pasar por PENDIENTE_REVISION** (requieren decisión humana)
+- ✅ Una vez APROBADA_MANUALMENTE → **bloqueada contra edición normal**
+  - Futuro: flujo explícito de "Reabrir" si es necesario modificar
+- ✅ Nunca crear proveedores desde formulario de edición de factura
+  - Solo autocomplete de `proveedores` existentes
+  - Si necesita proveedor nuevo → gestión de proveedores separada
+
+**Campos de auditoría**:
+```
+facturas_historial:
+- factura_id (FK)
+- usuario_id (FK)
+- accion: EDITADA, PROVEEDOR_ASIGNADO, REPROCESADA, APROBADA, RECHAZADA
+- campo_modificado: null para acciones sistémicas, else 'numero_factura', 'proveedor_id', etc.
+- datos_anteriores: JSONB del estado antes
+- datos_nuevos: JSONB del estado después
+- creado_en: timestamp inmutable
+```
+
+**Protección en BD**:
+```sql
+CREATE TRIGGER bloquear_historial_update BEFORE UPDATE ON facturas_historial
+  FOR EACH ROW RAISE EXCEPTION 'facturas_historial es append-only';
+
+CREATE TRIGGER bloquear_historial_delete BEFORE DELETE ON facturas_historial
+  FOR EACH ROW RAISE EXCEPTION 'facturas_historial es append-only';
+```
+
+**Diferencia clave**:
+- `estado_lectura` = lo que Claude hizo (IA)
+- `estado_revision` = lo que el humano decidió (administración)
+- Nunca se mezclan conceptualmente
+
+---
+
