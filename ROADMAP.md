@@ -1,7 +1,7 @@
 # ClinicOS - Roadmap Definitivo
 
 **Última Actualización**: 2026-08-30  
-**Versión**: 0.2.0
+**Versión**: 0.2.1
 
 ---
 
@@ -85,15 +85,24 @@ ClinicOS es un sistema interno de gestión administrativa para clínicas. **NO g
 - [x] Estados granulares (LECTURA_PENDIENTE → VALIDACION_EXITOSA)
 - [x] Auditoría de respuestas IA
 
-**B.3.5: Mejoras Idempotencia** 🟡 (SIGUIENTE)
-- [ ] Devolver estado controlado en segunda ejecución (no error DB)
-- [ ] Permite reprocesamiento de facturas con error
+**B.3.5: Mejoras Idempotencia** ✅ (2026-08-30)
+- [x] Devolver estado controlado en segunda ejecución (no error DB)
+- [x] Permite reprocesamiento de facturas con error
+- [x] Buscar proveedor por CIF/NIF
 
-**B.4: Búsqueda de Proveedor y UI** ⏳
-- [ ] Buscar proveedor por CIF/NIF
-- [ ] Interfaz de usuario para Facturas
-- [ ] Clasificación automática año/mes
-- [ ] Movimiento automático de archivos
+**B.4: UI de Facturas** ✅ (2026-08-30)
+- [x] Interfaz de usuario: listado de facturas
+- [x] Filtro por estado de lectura
+- [x] Mostrar: número, proveedor, fecha, total, estado
+- [x] Endpoint `/api/facturas/listar`
+
+**B.4.1: Detalle de Factura** ✅ (2026-08-30)
+- [x] Vista detallada por factura
+- [x] Información completa (fechas, importes, estado)
+- [x] Datos de extracción IA
+- [x] Link a PDF en Google Drive
+- [x] Auditoría de respuestas IA (expandible)
+- [x] Endpoint `/api/facturas/[id]`
 
 **B.5: Conciliación** ⏳
 - [ ] Importación CSV bancario
@@ -223,9 +232,11 @@ CLAUDE_API_KEY=<api_key>
 
 ---
 
-## Estado Actual (2026-08-17)
+## Estado Actual (2026-08-30)
 
-**Listo para**: Bloque B de Facturas
+**Listo para**: B.5 (Conciliación)
+
+**Completado**: Fase 1 + Facturas B.2 + B.3 + B.3.5 + B.4 + B.4.1
 
 **Bloqueadores**: Ninguno
 
@@ -233,7 +244,7 @@ CLAUDE_API_KEY=<api_key>
 
 **Calidad de código**: ✅ Excelente (TypeScript, sin errores)
 
-**Build**: ✅ Exitoso
+**Build**: ✅ Exitoso (npm run build)
 
 ---
 

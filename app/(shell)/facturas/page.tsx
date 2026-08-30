@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 interface Factura {
   id: string
@@ -28,6 +29,7 @@ const estadoColores: Record<string, string> = {
 }
 
 export default function FacturasPage() {
+  const router = useRouter()
   const [facturas, setFacturas] = useState<Factura[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -120,7 +122,11 @@ export default function FacturasPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {facturas.map((factura) => (
-                  <tr key={factura.id} className="hover:bg-gray-50">
+                  <tr
+                    key={factura.id}
+                    onClick={() => router.push(`/facturas/${factura.id}`)}
+                    className="hover:bg-gray-50 cursor-pointer transition"
+                  >
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {factura.numero_factura}
                     </td>
