@@ -564,3 +564,58 @@ CREATE TABLE facturas_extraccion_ia (
 
 ---
 
+## Decisión 12: Auditoría de Modificaciones Humanas (2026-08-30)
+
+**Problema**: Sin registrar quién edita qué y cuándo, un auditor administrativo no puede reconstruir decisiones.
+
+**Principio**: Toda modificación humana debe ser append-only, inmutable y trazable.
+
+**Distinción de capas**:
+```
+estado_lectura       ← Describe SOLO extracción IA
+(PENDIENTE, LECTURA_EXITOSA, VALIDACION_EXITOSA, REVISION_MANUAL, ERROR_LECTURA)
+
+estado_revision      ← Describe SOLO supervisión humana (introducido en B.4.2)
+(PENDIENTE_REVISION, APROBADA_MANUALMENTE, RECHAZADA)
+
+estado_administrativo ← Para B.5 (conciliación, gestoría)
+```
+
+**Tabla `facturas_historial`** (Creada en B.4.2):
+```sql
+CREATE TABLE facturas_historial (
+  id UUID PRIMARY KEY,
+  factura_id UUID REFERENCES facturas(id),
+  usuario_id UUID REFERENCES usuarios(id),
+  accion VARCHAR,  -- CREADA, EDITADA, REPROCESADA, PROVEEDOR_CAMBIADO, APROBADA, RECHAZADA
+  datos_anteriores JSONB,      -- Valores antes del cambio
+  datos_nuevos JSONB,          -- Valores después del cambio
+  creado_en TIMESTAMP NOT NULL
+);
+```
+
+**Invariantes**:
+- ✅ Append-only: nunca borrar, nunca actualizar histórico
+- ✅ Usuario_id es obligatorio (quién)
+- ✅ Acción explícita (qué)
+- ✅ Timestamps creado_en inmodificables (cuándo)
+- ✅ Registrar también reprocesamiento IA (no solo cambios manuales)
+- ✅ El proveedor seleccionado manualmente queda auditado
+- ✅ Las extracciones anteriores se conservan en `facturas_extraccion_ia`
+
+**Ejemplo flujo B.4.2**:
+```
+1. Usuario abre factura en REVISION_MANUAL
+2. Cambia base_imponible de 1000€ a 1050€
+   → INSERT facturas_historial (usuario_id, accion='EDITADA', datos_anteriores={'base_imponible': 1000}, datos_nuevos={'base_imponible': 1050})
+3. Usuario busca y asigna proveedor "Distribuciones ABC"
+   → INSERT facturas_historial (usuario_id, accion='PROVEEDOR_CAMBIADO', datos_anteriores={proveedor_id: null}, datos_nuevos={proveedor_id: '...'})
+4. Usuario aprueba factura
+   → INSERT facturas_historial (usuario_id, accion='APROBADA_MANUALMENTE', datos_nuevos={estado_revision: 'APROBADA_MANUALMENTE'})
+```
+
+**Beneficio**:
+Auditoría completa: "Claude dijo 1000€, pero Sara Gómez lo corrigió a 1050€ el 30/08/2026 10:23:45."
+
+---
+

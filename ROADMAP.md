@@ -104,6 +104,19 @@ ClinicOS es un sistema interno de gestión administrativa para clínicas. **NO g
 - [x] Auditoría de respuestas IA (expandible)
 - [x] Endpoint `/api/facturas/[id]`
 
+**B.4.2: Revisión + Edición + Auditoría** ▶️ SIGUIENTE
+- [ ] Edición controlada (número, fechas, importes, proveedor, concepto, IBAN)
+- [ ] Búsqueda de proveedor con autocomplete
+- [ ] Reprocesamiento con IA
+- [ ] Estado de revisión independiente (PENDIENTE_REVISION, APROBADA_MANUALMENTE, RECHAZADA)
+- [ ] Tabla `facturas_historial` para auditoría append-only
+- [ ] Registrar usuario, fecha/hora, acción, valores anterior/nuevo
+- [ ] Distinción clara: estado_lectura (IA) ≠ estado_revision (humano)
+
+**B.4.3: Documento/Descarga** ⏳
+- [ ] Descarga de PDF original
+- [ ] Impresión de resumen
+
 **B.5: Conciliación** ⏳
 - [ ] Importación CSV bancario
 - [ ] Conciliación automática
