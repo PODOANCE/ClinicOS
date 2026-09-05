@@ -46,6 +46,7 @@ export async function GET(
         proveedor_id,
         drive_file_id,
         hash_pdf,
+        extraccion_ia_id,
         proveedores(id, nombre, cif_nif),
         created_at,
         updated_at
@@ -65,15 +66,20 @@ export async function GET(
       return NextResponse.json({ error: 'Factura no encontrada' }, { status: 404 })
     }
 
-    const { data: extraccion } = await supabase
-      .from('facturas_extraccion_ia')
-      .select('respuesta_json, datos_validados, errores_validacion, created_at, updated_at')
-      .eq('factura_id', facturaId)
-      .maybeSingle()
+    // Obtener la extracción IA actualmente aplicada (referenciada por FK)
+    let extraccion = null
+    if (factura.extraccion_ia_id) {
+      const { data } = await supabase
+        .from('facturas_extraccion_ia')
+        .select('id, respuesta_json, datos_validados, errores_validacion, creado_en, usuario_id')
+        .eq('id', factura.extraccion_ia_id)
+        .single()
+      extraccion = data || null
+    }
 
     return NextResponse.json({
       factura,
-      extraccion: extraccion || null,
+      extraccion,
     })
   } catch (error) {
     console.error('[GET] Error:', error)

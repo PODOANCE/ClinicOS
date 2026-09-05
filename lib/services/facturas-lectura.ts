@@ -1,4 +1,3 @@
-import crypto from 'crypto'
 import { createAdminClient } from '@/lib/supabase/server'
 import { downloadFileAsBuffer } from '@/lib/oauth/google-drive'
 import { extraerTextoDelPdf, extraerDatosFacturaConClaude } from './claude'
@@ -83,13 +82,6 @@ async function descargarPdf(driveFileId: string): Promise<Buffer> {
     )
     return pdfMock
   }
-}
-
-/**
- * B.3.1: Calcula SHA-256 del PDF
- */
-function calcularSha256(pdfBuffer: Buffer): string {
-  return crypto.createHash('sha256').update(pdfBuffer).digest('hex')
 }
 
 /**
@@ -186,6 +178,7 @@ function validarDatos(datos: ExtraccionIA): ErrorValidacion[] {
 /**
  * B.3.4: Guarda respuesta de IA en tabla facturas_extraccion_ia
  * Incluye: JSON bruto de Claude, datos validados, errores, y metadatos para auditoría
+ * Retorna: UUID de la extracción guardada (para vincular a factura)
  */
 async function guardarExtraccion(
   facturaId: string,
@@ -193,7 +186,7 @@ async function guardarExtraccion(
   textExtraido: string | null,
   datosValidados?: ExtraccionIA,
   erroresValidacion?: ErrorValidacion[]
-) {
+): Promise<string> {
   const supabase = createAdminClient()
 
   // Guardar también metadatos sobre el texto (para auditoría sin almacenar todo el texto)
@@ -204,35 +197,53 @@ async function guardarExtraccion(
       }
     : { texto_length: 0 }
 
-  const { error } = await supabase.from('facturas_extraccion_ia').insert({
-    factura_id: facturaId,
-    respuesta_json: {
-      ...respuestaJson,
-      _metadatos: metadatos,
-    },
-    datos_validados: datosValidados || null,
-    errores_validacion: erroresValidacion ? erroresValidacion.map((e) => e.mensaje) : null,
-  })
+  const { data, error } = await supabase
+    .from('facturas_extraccion_ia')
+    .insert({
+      factura_id: facturaId,
+      usuario_id: null, // B.3 automático: NULL significa "procesamiento automático"
+      respuesta_json: {
+        ...respuestaJson,
+        _metadatos: metadatos,
+      },
+      datos_validados: datosValidados || null,
+      errores_validacion: erroresValidacion ? erroresValidacion.map((e) => e.mensaje) : null,
+    })
+    .select('id')
 
   if (error) {
     throw new Error(`Error guardando extracción: ${error.message}`)
   }
+
+  if (!data || data.length === 0) {
+    throw new Error('No se pudo obtener ID de extracción generada')
+  }
+
+  return data[0].id
 }
 
 /**
- * B.3.4: Actualiza estado de factura
+ * B.3.4: Actualiza estado de factura y vincula extracción IA aplicada
  */
 async function actualizarFactura(
   facturaId: string,
   estado: string,
   datos?: Partial<ExtraccionIA>,
-  proveedorId?: string | null
+  proveedorId?: string | null,
+  extraccionIaId?: string // ID de extracción IA a vincular (B.3: siempre presente)
 ) {
   const supabase = createAdminClient()
 
   const actualizacion: Record<string, unknown> = {
     estado_lectura: estado,
     updated_by: '00000000-0000-0000-0000-000000000000', // SISTEMA_CRON
+  }
+
+  // Vincular extracción IA (o NULL si no hay)
+  // En B.3: siempre pasamos el UUID después de guardarla
+  // En B.4.2 PATCH: RPC ya pone NULL cuando usuario edita
+  if (extraccionIaId !== undefined) {
+    actualizacion.extraccion_ia_id = extraccionIaId || null
   }
 
   // Si hay datos validados, mapearlos a columnas de factura
@@ -301,56 +312,80 @@ export async function procesarFactura(facturaId: string): Promise<ResultadoProce
     // 1. Obtener factura
     const factura = await obtenerFactura(facturaId)
 
-    // B.3.5: Verificar si ya fue procesada (idempotencia controlada)
+    // B.3.5: IDEMPOTENCIA ATÓMICA (RPC transaccional)
+    // La RPC `iniciar_procesamiento_factura()` maneja:
+    // - FOR UPDATE: bloquea la fila
+    // - Verifica estado_lectura
+    // - Cambia a LECTURA_PENDIENTE (atómico) si es NULL/ERROR_LECTURA
+    // - Devuelve puede_procesar: boolean
+    //
+    // Esto evita race conditions entre múltiples procesos B.3 simultáneos.
+    // Solo UN proceso por factura obtendrá puede_procesar = true.
+
     const supabase = createAdminClient()
-    const { data: yaExiste } = await supabase
-      .from('facturas_extraccion_ia')
-      .select('id, estado_lectura:factura_id(estado_lectura)')
-      .eq('factura_id', facturaId)
-      .maybeSingle()
+    const { data: rpcResult, error: rpcError } = await supabase.rpc(
+      'iniciar_procesamiento_factura',
+      { p_factura_id: facturaId }
+    )
 
-    if (yaExiste) {
-      console.log('[IDEMPOTENCIA] Factura ya fue procesada:', facturaId)
-      // Obtener estado actual
-      const { data: facturaActual } = await supabase
-        .from('facturas')
-        .select('estado_lectura')
-        .eq('id', facturaId)
-        .single()
+    if (rpcError) {
+      throw new Error(`Error en RPC idempotencia: ${rpcError.message}`)
+    }
 
+    if (!rpcResult || rpcResult.length === 0) {
+      throw new Error('RPC idempotencia devolvió resultado vacío')
+    }
+
+    const [rpcRow] = rpcResult
+    const { puede_procesar, estado_actual, razon } = rpcRow
+
+    if (!puede_procesar) {
+      // Si la factura no existe, es un error de entrada (no es idempotencia)
+      if (razon === 'FACTURA_NO_EXISTE') {
+        throw new Error(`Factura no existe: ${facturaId}`)
+      }
+
+      // Otros casos: otro proceso está procesando o ya fue completado (idempotencia)
+      console.log(
+        `[IDEMPOTENCIA] No procesando factura ${facturaId}. Razón: ${razon}, Estado: ${estado_actual}`
+      )
       return {
         exitoso: true,
         facturaId,
-        estado: facturaActual?.estado_lectura || 'VALIDACION_EXITOSA',
-        datos: undefined, // Ya está en BD, no repetir
+        estado: estado_actual || 'DESCONOCIDO',
+        datos: undefined,
       }
     }
 
-    // 2. Cambiar a LECTURA_PENDIENTE
-    await actualizarFactura(facturaId, 'LECTURA_PENDIENTE')
+    // ✅ SEGURO PROCESAR
+    // La RPC ya cambió estado a LECTURA_PENDIENTE de forma atómica
+    console.log('[IDEMPOTENCIA] Factura adquirida para procesamiento:', facturaId)
 
     // 3. B.3.1: Descargar PDF
     const pdfBuffer = await descargarPdf(factura.drive_file_id)
-    const sha256 = calcularSha256(pdfBuffer)
 
     // 4. B.3.2: Extraer datos con IA
     const { datos: datosIA, textExtraido: texto } = await extraerDatosConIA(pdfBuffer)
     textExtraido = texto
 
     // Cambiar a LECTURA_EXITOSA (Claude respondió bien)
-    await actualizarFactura(facturaId, 'LECTURA_EXITOSA', datosIA)
+    // En este punto NO guardamos extracción aún: solo confirmamos que Claude respondió
+    await actualizarFactura(facturaId, 'LECTURA_EXITOSA', datosIA, undefined, undefined)
 
     // 5. B.3.3: Validar datos
     const erroresValidacion = validarDatos(datosIA)
 
-    // 6. Guardar respuesta IA (siempre, incluso si hay errores de validación)
-    await guardarExtraccion(
+    // 6. Guardar extracción y CAPTURAR UUID
+    // Este UUID será la FK en facturas.extraccion_ia_id
+    // Indica cuál extracción IA fue la que se aplicó finalmente
+    const extraccionIaId = await guardarExtraccion(
       facturaId,
       datosIA,
       textExtraido,
       erroresValidacion.length === 0 ? datosIA : undefined,
       erroresValidacion.length > 0 ? erroresValidacion : undefined
     )
+    console.log('[B.3.4] Extracción guardada:', extraccionIaId)
 
     // 7. B.3.5: Buscar proveedor por CIF/NIF
     let proveedorId: string | null = null
@@ -363,10 +398,13 @@ export async function procesarFactura(facturaId: string): Promise<ResultadoProce
       }
     }
 
-    // 8. Determinar estado final
+    // 8. Determinar estado final y vincular extracción
+    // En ambos casos, la extraccionIaId se vincula a la factura
+    // porque es la extracción que se generó y procesó
     if (erroresValidacion.length === 0) {
       // Datos válidos: VALIDACION_EXITOSA
-      await actualizarFactura(facturaId, 'VALIDACION_EXITOSA', datosIA, proveedorId)
+      // La extracción se aplicó exitosamente
+      await actualizarFactura(facturaId, 'VALIDACION_EXITOSA', datosIA, proveedorId, extraccionIaId)
 
       return {
         exitoso: true,
@@ -376,7 +414,9 @@ export async function procesarFactura(facturaId: string): Promise<ResultadoProce
       }
     } else {
       // Datos inconsistentes: REVISION_MANUAL
-      await actualizarFactura(facturaId, 'REVISION_MANUAL', datosIA, proveedorId)
+      // La extracción se guardó pero requiere revisión humana
+      // Igual se vincula porque es la que se propone
+      await actualizarFactura(facturaId, 'REVISION_MANUAL', datosIA, proveedorId, extraccionIaId)
 
       return {
         exitoso: false,
@@ -388,10 +428,11 @@ export async function procesarFactura(facturaId: string): Promise<ResultadoProce
     }
   } catch (error) {
     // Error técnico: ERROR_LECTURA
+    // Sin extraccionIaId porque no completamos guardarExtraccion()
     const mensajeError = error instanceof Error ? error.message : 'Error desconocido'
 
     try {
-      await actualizarFactura(facturaId, 'ERROR_LECTURA')
+      await actualizarFactura(facturaId, 'ERROR_LECTURA', undefined, undefined, undefined)
     } catch {
       // Si ni siquiera se puede actualizar el estado, log y continúa
       console.error('No se pudo actualizar estado a ERROR_LECTURA:', mensajeError)
