@@ -202,6 +202,7 @@ BEGIN
     proveedor_id = CASE WHEN v_cambios_aplicados ? 'proveedor_id'
       THEN NULLIF((v_cambios_aplicados ->> 'proveedor_id'), 'null')::UUID
       ELSE proveedor_id END,
+    extraccion_ia_id = NULL,  -- Invalidar extracción IA (datos ahora son manuales)
     updated_at = NOW()
   WHERE id = p_factura_id
   RETURNING updated_at INTO v_nuevo_updated_at;
