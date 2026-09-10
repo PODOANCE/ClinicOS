@@ -57,8 +57,9 @@ async function obtenerFactura(facturaId: string) {
 /**
  * B.3.1: Descarga PDF desde Google Drive
  * MOCK: Si OAuth falla, devuelve PDF de prueba
+ * EXPORTADA: Reutilizada en Phase 2A (reprocesamiento manual)
  */
-async function descargarPdf(driveFileId: string): Promise<Buffer> {
+export async function descargarPdf(driveFileId: string): Promise<Buffer> {
   try {
     const pdfBuffer = await downloadFileAsBuffer(driveFileId)
     if (!pdfBuffer || pdfBuffer.length === 0) {
@@ -108,8 +109,9 @@ async function extraerDatosConIA(
 
 /**
  * B.3.3: Valida coherencia de los datos extraídos
+ * EXPORTADA: Reutilizada en Phase 2A (reprocesamiento manual)
  */
-function validarDatos(datos: ExtraccionIA): ErrorValidacion[] {
+export function validarDatos(datos: ExtraccionIA): ErrorValidacion[] {
   const errores: ErrorValidacion[] = []
 
   // Validación: importes no negativos
@@ -176,6 +178,19 @@ function validarDatos(datos: ExtraccionIA): ErrorValidacion[] {
 }
 
 /**
+ * B.3.4: Genera metadatos de extracción (texto_length, texto_preview)
+ * EXPORTADA: Reutilizada en Phase 2A (reprocesamiento manual)
+ */
+export function generarMetadatosExtraccion(textExtraido: string | null) {
+  return textExtraido
+    ? {
+        texto_length: textExtraido.length,
+        texto_preview: textExtraido.substring(0, 500),
+      }
+    : { texto_length: 0 }
+}
+
+/**
  * B.3.4: Guarda respuesta de IA en tabla facturas_extraccion_ia
  * Incluye: JSON bruto de Claude, datos validados, errores, y metadatos para auditoría
  * Retorna: UUID de la extracción guardada (para vincular a factura)
@@ -189,13 +204,7 @@ async function guardarExtraccion(
 ): Promise<string> {
   const supabase = createAdminClient()
 
-  // Guardar también metadatos sobre el texto (para auditoría sin almacenar todo el texto)
-  const metadatos = textExtraido
-    ? {
-        texto_length: textExtraido.length,
-        texto_preview: textExtraido.substring(0, 500),
-      }
-    : { texto_length: 0 }
+  const metadatos = generarMetadatosExtraccion(textExtraido)
 
   const { data, error } = await supabase
     .from('facturas_extraccion_ia')
@@ -272,8 +281,9 @@ async function actualizarFactura(
 
 /**
  * B.3.5: Busca proveedor por CIF/NIF
+ * EXPORTADA: Reutilizada en Phase 2A (reprocesamiento manual)
  */
-async function buscarProveedorPorCifNif(cifNif: string): Promise<string | null> {
+export async function buscarProveedorPorCifNif(cifNif: string): Promise<string | null> {
   const supabase = createAdminClient()
 
   // Normalizar: remover espacios y guiones

@@ -66,20 +66,53 @@ export async function GET(
       return NextResponse.json({ error: 'Factura no encontrada' }, { status: 404 })
     }
 
-    // Obtener la extracción IA actualmente aplicada (referenciada por FK)
-    let extraccion = null
+    // ====================================================================
+    // OBTENER EXTRACCIÓN APLICADA (fuente de verdad: extraccion_ia_id)
+    // ====================================================================
+    let extraccionAplicada = null
     if (factura.extraccion_ia_id) {
       const { data } = await supabase
         .from('facturas_extraccion_ia')
-        .select('id, respuesta_json, datos_validados, errores_validacion, creado_en, usuario_id')
+        .select(
+          'id, respuesta_json, datos_validados, errores_validacion, creado_en, usuario_id'
+        )
         .eq('id', factura.extraccion_ia_id)
         .single()
-      extraccion = data || null
+      extraccionAplicada = data || null
+    }
+
+    // ====================================================================
+    // OBTENER HISTÓRICO DE TODAS LAS EXTRACCIONES (incluyendo alternativas)
+    // ====================================================================
+    let historicoExtracciones: Array<{
+      id: string
+      respuesta_json: object | null
+      datos_validados: object | null
+      errores_validacion: object | null
+      usuario_id: string | null
+      creado_en: string
+      estáAplicada: boolean
+    }> = []
+
+    const { data: extracciones } = await supabase
+      .from('facturas_extraccion_ia')
+      .select(
+        'id, respuesta_json, datos_validados, errores_validacion, usuario_id, creado_en'
+      )
+      .eq('factura_id', facturaId)
+      .order('creado_en', { ascending: false })
+
+    if (extracciones) {
+      historicoExtracciones = extracciones.map((ext) => ({
+        ...ext,
+        estáAplicada: ext.id === factura.extraccion_ia_id // Calculado en backend
+      }))
     }
 
     return NextResponse.json({
       factura,
-      extraccion,
+      extraccionAplicada,
+      historicoExtracciones
     })
   } catch (error) {
     console.error('[GET] Error:', error)
