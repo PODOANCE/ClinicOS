@@ -42,6 +42,55 @@ export interface SesionUsuario extends Usuario {
   roles: Rol[];
 }
 
+// Categoría de Stock: jerarquía de 2 niveles (área > grupo)
+export interface StockCategoria {
+  id: string;
+  nombre: string;
+  padre_id: string | null; // null en nivel 1
+  nivel: 1 | 2;
+  orden: number;
+  centro_id: string;
+  activo: boolean;
+  archived_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// Producto de Stock: stock_actual es un valor materializado, fuente de
+// verdad = stock_movimientos. Nunca se edita directamente.
+export interface StockProducto {
+  id: string;
+  nombre: string;
+  unidad: string;
+  categoria_id: string;
+  stock_actual: number;
+  stock_minimo: number;
+  stock_critico: number;
+  proveedor_id: string | null;
+  proveedor_texto: string | null;
+  notas?: string | null;
+  centro_id: string;
+  activo: boolean;
+  archived_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type StockMovimientoTipo = 'ENTRADA' | 'CONSUMO' | 'AJUSTE_POSITIVO' | 'AJUSTE_NEGATIVO';
+
+export interface StockMovimiento {
+  id: string;
+  producto_id: string;
+  tipo: StockMovimientoTipo;
+  cantidad: number;
+  stock_resultante: number;
+  motivo?: string | null;
+  coste_unitario?: number | null;
+  usuario_id: string;
+  centro_id: string;
+  created_at: string;
+}
+
 // Tarea: unidad de trabajo asignada a un usuario
 export interface Tarea {
   id: string;

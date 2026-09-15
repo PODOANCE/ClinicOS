@@ -1,16 +1,28 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useUser } from '@/lib/contexts/UserContext'
+import { getRolesUsuarioActual } from '@/lib/supabase/queries/stock'
+import { canUserAccess } from '@/lib/permissions/validation'
 
 export function Navigation() {
   const pathname = usePathname()
-  const { loading } = useUser()
+  const { user, loading } = useUser()
+  const [puedeVerStock, setPuedeVerStock] = useState(false)
+
+  useEffect(() => {
+    if (!user) return
+    getRolesUsuarioActual(user.id).then((roles) => {
+      setPuedeVerStock(canUserAccess(roles, 'Stock', 'ver'))
+    })
+  }, [user])
 
   const navItems = [
     { nombre: 'Dashboard', href: '/dashboard' },
     { nombre: 'Hoy', href: '/hoy' },
+    ...(puedeVerStock ? [{ nombre: 'Stock', href: '/stock' }] : []),
   ]
 
   if (loading) {
