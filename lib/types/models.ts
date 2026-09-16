@@ -139,6 +139,26 @@ export interface VacacionesPeriodo {
   updated_by: string;
 }
 
+export type LeadsResultado = 'CITA_NUEVO' | 'CITA_CONOCIDO' | 'NO_NUEVO' | 'NO_CONOCIDO' | 'SEGURO';
+
+// Llamada de lead registrada en recepción: un registro por llamada recibida
+export interface LeadLlamada {
+  id: string;
+  fecha: string;
+  servicio: string;
+  canal: string | null;
+  localidad: string | null;
+  resultado: LeadsResultado;
+  motivo: string | null;
+  reembolso: string | null;
+  telefono: string | null;
+  centro_id: string;
+  created_at: string;
+  created_by: string;
+  updated_at: string;
+  updated_by: string;
+}
+
 // Tarea: unidad de trabajo asignada a un usuario
 export interface Tarea {
   id: string;

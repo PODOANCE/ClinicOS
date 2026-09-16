@@ -13,6 +13,7 @@ export function Navigation() {
   const [puedeVerStock, setPuedeVerStock] = useState(false)
   const [puedeVerVacaciones, setPuedeVerVacaciones] = useState(false)
   const [puedeVerConciliacion, setPuedeVerConciliacion] = useState(false)
+  const [puedeVerLeads, setPuedeVerLeads] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -20,6 +21,7 @@ export function Navigation() {
       setPuedeVerStock(canUserAccess(roles, 'Stock', 'ver'))
       setPuedeVerVacaciones(canUserAccess(roles, 'Vacaciones', 'ver'))
       setPuedeVerConciliacion(canUserAccess(roles, 'Facturas', 'editar'))
+      setPuedeVerLeads(canUserAccess(roles, 'Leads', 'ver'))
     })
   }, [user])
 
@@ -29,6 +31,7 @@ export function Navigation() {
     ...(puedeVerStock ? [{ nombre: 'Stock', href: '/stock' }] : []),
     ...(puedeVerVacaciones ? [{ nombre: 'Vacaciones', href: '/vacaciones' }] : []),
     ...(puedeVerConciliacion ? [{ nombre: 'Conciliación', href: '/conciliacion' }] : []),
+    ...(puedeVerLeads ? [{ nombre: 'Leads', href: '/leads' }] : []),
   ]
 
   if (loading) {
