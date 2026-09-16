@@ -11,11 +11,13 @@ export function Navigation() {
   const pathname = usePathname()
   const { user, loading } = useUser()
   const [puedeVerStock, setPuedeVerStock] = useState(false)
+  const [puedeVerVacaciones, setPuedeVerVacaciones] = useState(false)
 
   useEffect(() => {
     if (!user) return
     getRolesUsuarioActual(user.id).then((roles) => {
       setPuedeVerStock(canUserAccess(roles, 'Stock', 'ver'))
+      setPuedeVerVacaciones(canUserAccess(roles, 'Vacaciones', 'ver'))
     })
   }, [user])
 
@@ -23,6 +25,7 @@ export function Navigation() {
     { nombre: 'Dashboard', href: '/dashboard' },
     { nombre: 'Hoy', href: '/hoy' },
     ...(puedeVerStock ? [{ nombre: 'Stock', href: '/stock' }] : []),
+    ...(puedeVerVacaciones ? [{ nombre: 'Vacaciones', href: '/vacaciones' }] : []),
   ]
 
   if (loading) {

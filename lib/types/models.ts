@@ -91,6 +91,54 @@ export interface StockMovimiento {
   created_at: string;
 }
 
+// Trabajador de Vacaciones: entidad propia del módulo, opcionalmente
+// vinculada a un usuario real (usuario_id nullable; puede haber
+// trabajadores compartiendo el mismo usuario_id, p.ej. Andrés y Celia)
+export interface VacacionesTrabajador {
+  id: string;
+  nombre: string;
+  color: string; // hex #RRGGBB
+  dias_anuales: number;
+  orden: number;
+  usuario_id: string | null;
+  centro_id: string;
+  activo: boolean;
+  archived_at?: string | null;
+  created_at: string;
+  created_by: string;
+  updated_at: string;
+  updated_by: string;
+}
+
+export type VacacionesFestivoTipo = 'NACIONAL' | 'AUTONOMICO' | 'LOCAL' | 'CLINICA';
+
+export interface VacacionesFestivo {
+  id: string;
+  fecha: string;
+  nombre: string;
+  tipo: VacacionesFestivoTipo;
+  centro_id: string;
+  created_at: string;
+  created_by: string;
+  updated_at: string;
+  updated_by: string;
+}
+
+export type VacacionesPeriodoTipo = 'VACACIONES' | 'ASUNTOS_PROPIOS' | 'FORMACION' | 'BAJA';
+
+export interface VacacionesPeriodo {
+  id: string;
+  trabajador_id: string;
+  fecha_inicio: string;
+  fecha_fin: string;
+  tipo: VacacionesPeriodoTipo;
+  centro_id: string;
+  created_at: string;
+  created_by: string;
+  updated_at: string;
+  updated_by: string;
+}
+
 // Tarea: unidad de trabajo asignada a un usuario
 export interface Tarea {
   id: string;
