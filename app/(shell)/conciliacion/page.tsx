@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useUser } from '@/lib/contexts/UserContext'
 import { createClient } from '@/lib/supabase/browser'
 import { getRolesUsuarioActual } from '@/lib/supabase/queries/stock'
@@ -31,6 +31,10 @@ export default function ConciliacionPage() {
   const [ejecutando, setEjecutando] = useState(false)
   const [ultimoResumen, setUltimoResumen] = useState<string | null>(null)
   const [procesandoId, setProcesandoId] = useState<string | null>(null)
+  const [importando, setImportando] = useState(false)
+  const [resumenImportacion, setResumenImportacion] = useState<string | null>(null)
+  const [erroresImportacion, setErroresImportacion] = useState<{ fila: number; motivo: string }[]>([])
+  const inputArchivoRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (user) cargar()
@@ -78,6 +82,40 @@ export default function ConciliacionPage() {
       alert(err instanceof Error ? err.message : 'Error ejecutando la conciliación')
     } finally {
       setEjecutando(false)
+    }
+  }
+
+  async function handleImportar(archivo: File) {
+    setImportando(true)
+    setResumenImportacion(null)
+    setErroresImportacion([])
+    try {
+      const supabase = createClient()
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      const formData = new FormData()
+      formData.append('archivo', archivo)
+
+      const res = await fetch('/api/banco/importar', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session?.access_token ?? ''}` },
+        body: formData,
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error importando el archivo')
+
+      setResumenImportacion(
+        `"${data.archivo}" · ${data.insertados} movimiento(s) nuevo(s) · ${data.yaExistentes} ya existente(s) de ${data.totalFilas} fila(s)` +
+          (data.periodo ? ` · periodo ${data.periodo.desde} – ${data.periodo.hasta}` : '')
+      )
+      setErroresImportacion(data.errores ?? [])
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error importando el archivo')
+    } finally {
+      setImportando(false)
+      if (inputArchivoRef.current) inputArchivoRef.current.value = ''
     }
   }
 
@@ -139,6 +177,37 @@ export default function ConciliacionPage() {
           {ejecutando ? 'Ejecutando...' : '⚙️ Ejecutar conciliación'}
         </button>
       </div>
+
+      <div className="bg-white rounded-lg shadow p-4 flex items-center gap-3 flex-wrap">
+        <span className="text-sm font-medium text-gray-700">📄 Importar movimientos bancarios (.xlsx)</span>
+        <input
+          ref={inputArchivoRef}
+          type="file"
+          accept=".xlsx"
+          disabled={importando}
+          onChange={(e) => {
+            const archivo = e.target.files?.[0]
+            if (archivo) handleImportar(archivo)
+          }}
+          className="text-sm"
+        />
+        {importando && <span className="text-sm text-gray-500">Importando...</span>}
+      </div>
+
+      {resumenImportacion && (
+        <div className="bg-blue-50 border border-blue-200 text-blue-800 text-sm rounded-md px-4 py-2 space-y-1">
+          <div>{resumenImportacion}</div>
+          {erroresImportacion.length > 0 && (
+            <ul className="list-disc list-inside text-xs text-blue-700">
+              {erroresImportacion.map((e, i) => (
+                <li key={i}>
+                  Fila {e.fila}: {e.motivo}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {ultimoResumen && (
         <div className="bg-blue-50 border border-blue-200 text-blue-800 text-sm rounded-md px-4 py-2">
