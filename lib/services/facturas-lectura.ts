@@ -55,34 +55,18 @@ async function obtenerFactura(facturaId: string) {
 }
 
 /**
- * B.3.1: Descarga PDF desde Google Drive
- * MOCK: Si OAuth falla, devuelve PDF de prueba
+ * B.3.1: Descarga PDF desde Google Drive.
+ * Un fallo real (Drive, permisos, archivo vacío) se propaga como excepción
+ * en vez de sustituirse por un PDF de prueba: un error de descarga nunca
+ * debe leerse como si fuera la factura real.
  * EXPORTADA: Reutilizada en Phase 2A (reprocesamiento manual)
  */
 export async function descargarPdf(driveFileId: string): Promise<Buffer> {
-  try {
-    const pdfBuffer = await downloadFileAsBuffer(driveFileId)
-    if (!pdfBuffer || pdfBuffer.length === 0) {
-      throw new Error('PDF descargado está vacío')
-    }
-    return pdfBuffer
-  } catch (error) {
-    // MOCK: Si falla (OAuth, API key, etc), devolver PDF de prueba para testing
-    console.log('[MOCK] Descarga de Drive falló, usando PDF de prueba para B.3.1')
-    console.log('Error:', error instanceof Error ? error.message : String(error))
-
-    // PDF mínimo de prueba (válido)
-    const pdfMock = Buffer.from(
-      '%PDF-1.4\n' +
-        '1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n' +
-        '2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n' +
-        '3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Contents 4 0 R/Resources<<>>>endobj\n' +
-        '4 0 obj<</Length 100>>stream\nBT\n/F1 12 Tf\n100 700 Td\n(Factura de Prueba FAC-2026-001234) Tj\n(Base: 1000 EUR, IVA: 210 EUR, Total: 1210 EUR) Tj\nET\nendstream\nendobj\n' +
-        'xref\n0 5\n0000000000 65535 f\n0000000009 00000 n\n0000000058 00000 n\n0000000115 00000 n\n0000000214 00000 n\n' +
-        'trailer<</Size 5/Root 1 0 R>>\nstartxref\n364\n%%EOF'
-    )
-    return pdfMock
+  const pdfBuffer = await downloadFileAsBuffer(driveFileId)
+  if (!pdfBuffer || pdfBuffer.length === 0) {
+    throw new Error('PDF descargado está vacío')
   }
+  return pdfBuffer
 }
 
 /**
@@ -200,17 +184,18 @@ async function guardarExtraccion(
   respuestaJson: ExtraccionIA,
   textExtraido: string | null,
   datosValidados?: ExtraccionIA,
-  erroresValidacion?: ErrorValidacion[]
+  erroresValidacion?: ErrorValidacion[],
+  origen: 'automatico' | 'skill' = 'automatico'
 ): Promise<string> {
   const supabase = createAdminClient()
 
-  const metadatos = generarMetadatosExtraccion(textExtraido)
+  const metadatos = { ...generarMetadatosExtraccion(textExtraido), origen }
 
   const { data, error } = await supabase
     .from('facturas_extraccion_ia')
     .insert({
       factura_id: facturaId,
-      usuario_id: null, // B.3 automático: NULL significa "procesamiento automático"
+      usuario_id: null, // NULL significa "procesamiento no interactivo" (automático o Skill)
       respuesta_json: {
         ...respuestaJson,
         _metadatos: metadatos,
@@ -303,6 +288,50 @@ export async function buscarProveedorPorCifNif(cifNif: string): Promise<string |
 }
 
 /**
+ * Aplica unos datos ya extraídos (por Claude, sea la ruta automática interna
+ * o una lectura hecha externamente, ej. la Skill) a una factura: valida,
+ * guarda la extracción, busca proveedor por CIF/NIF y actualiza la factura.
+ * Compartida por procesarFactura() y por el endpoint de la Skill para no
+ * duplicar las reglas de validación ni el mapeo a columnas.
+ */
+export async function aplicarDatosExtraccion(
+  facturaId: string,
+  datosIA: ExtraccionIA,
+  textExtraido: string | null,
+  origen: 'automatico' | 'skill' = 'automatico'
+): Promise<ResultadoProcesamiento> {
+  const erroresValidacion = validarDatos(datosIA)
+
+  const extraccionIaId = await guardarExtraccion(
+    facturaId,
+    datosIA,
+    textExtraido,
+    erroresValidacion.length === 0 ? datosIA : undefined,
+    erroresValidacion.length > 0 ? erroresValidacion : undefined,
+    origen
+  )
+
+  let proveedorId: string | null = null
+  if (erroresValidacion.length === 0 && datosIA.nif_cif_proveedor) {
+    proveedorId = await buscarProveedorPorCifNif(datosIA.nif_cif_proveedor)
+  }
+
+  if (erroresValidacion.length === 0) {
+    await actualizarFactura(facturaId, 'VALIDACION_EXITOSA', datosIA, proveedorId, extraccionIaId)
+    return { exitoso: true, facturaId, estado: 'VALIDACION_EXITOSA', datos: datosIA }
+  }
+
+  await actualizarFactura(facturaId, 'REVISION_MANUAL', datosIA, proveedorId, extraccionIaId)
+  return {
+    exitoso: false,
+    facturaId,
+    estado: 'REVISION_MANUAL',
+    datos: datosIA,
+    errores: erroresValidacion,
+  }
+}
+
+/**
  * Orquestador principal: B.3.1 → B.3.5
  *
  * Flujo de estados:
@@ -382,60 +411,9 @@ export async function procesarFactura(facturaId: string): Promise<ResultadoProce
     // En este punto NO guardamos extracción aún: solo confirmamos que Claude respondió
     await actualizarFactura(facturaId, 'LECTURA_EXITOSA', datosIA, undefined, undefined)
 
-    // 5. B.3.3: Validar datos
-    const erroresValidacion = validarDatos(datosIA)
-
-    // 6. Guardar extracción y CAPTURAR UUID
-    // Este UUID será la FK en facturas.extraccion_ia_id
-    // Indica cuál extracción IA fue la que se aplicó finalmente
-    const extraccionIaId = await guardarExtraccion(
-      facturaId,
-      datosIA,
-      textExtraido,
-      erroresValidacion.length === 0 ? datosIA : undefined,
-      erroresValidacion.length > 0 ? erroresValidacion : undefined
-    )
-    console.log('[B.3.4] Extracción guardada:', extraccionIaId)
-
-    // 7. B.3.5: Buscar proveedor por CIF/NIF
-    let proveedorId: string | null = null
-    if (erroresValidacion.length === 0 && datosIA.nif_cif_proveedor) {
-      proveedorId = await buscarProveedorPorCifNif(datosIA.nif_cif_proveedor)
-      if (proveedorId) {
-        console.log('[B.3.5] Proveedor encontrado:', proveedorId)
-      } else {
-        console.log('[B.3.5] Proveedor no encontrado para CIF/NIF:', datosIA.nif_cif_proveedor)
-      }
-    }
-
-    // 8. Determinar estado final y vincular extracción
-    // En ambos casos, la extraccionIaId se vincula a la factura
-    // porque es la extracción que se generó y procesó
-    if (erroresValidacion.length === 0) {
-      // Datos válidos: VALIDACION_EXITOSA
-      // La extracción se aplicó exitosamente
-      await actualizarFactura(facturaId, 'VALIDACION_EXITOSA', datosIA, proveedorId, extraccionIaId)
-
-      return {
-        exitoso: true,
-        facturaId,
-        estado: 'VALIDACION_EXITOSA',
-        datos: datosIA,
-      }
-    } else {
-      // Datos inconsistentes: REVISION_MANUAL
-      // La extracción se guardó pero requiere revisión humana
-      // Igual se vincula porque es la que se propone
-      await actualizarFactura(facturaId, 'REVISION_MANUAL', datosIA, proveedorId, extraccionIaId)
-
-      return {
-        exitoso: false,
-        facturaId,
-        estado: 'REVISION_MANUAL',
-        datos: datosIA,
-        errores: erroresValidacion,
-      }
-    }
+    // 5-8. Validar, guardar extracción, buscar proveedor y actualizar factura
+    // (lógica compartida con el endpoint de la Skill, ver aplicarDatosExtraccion)
+    return await aplicarDatosExtraccion(facturaId, datosIA, textExtraido, 'automatico')
   } catch (error) {
     // Error técnico: ERROR_LECTURA
     // Sin extraccionIaId porque no completamos guardarExtraccion()

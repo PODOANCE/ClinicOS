@@ -7,12 +7,13 @@
  * - Reutilizable por: procesamiento manual, cron semanal, clasificación, movimiento
  *
  * SEGURIDAD:
- * - Usa OAuth2 desde servidor (refresh token en .env)
+ * - Usa una cuenta de servicio de Google (sin caducidad, sin consentimiento
+ *   interactivo); la carpeta FACTURAS debe estar compartida con su email
  * - No expone credenciales al cliente
  * - No modifica archivos sin autorización explícita
  */
 
-import { setCredentials, getOAuth2Client } from '@/lib/oauth/google-auth'
+import { getServiceAccountAuth } from '@/lib/oauth/google-auth'
 import { getFolderByName, listPDFsInFolder, downloadFileAsBuffer } from '@/lib/oauth/google-drive'
 import { createAdminClient } from '@/lib/supabase/server'
 import { google } from 'googleapis'
@@ -37,24 +38,10 @@ interface ListadoFacturasResult {
 }
 
 /**
- * Inicializa credenciales OAuth2 desde variables de entorno
- */
-function inicializarOAuth2() {
-  const refreshToken = process.env.GOOGLE_OAUTH_REFRESH_TOKEN
-  if (!refreshToken) {
-    throw new Error(
-      'GOOGLE_OAUTH_REFRESH_TOKEN no configurado. Ejecuta OAuth2 primero en /api/auth/google/authorize'
-    )
-  }
-  setCredentials({ refresh_token: refreshToken })
-}
-
-/**
  * Obtiene la carpeta FACTURAS desde el root de Drive
  * Si no existe, lanza error
  */
 async function obtenerCarpetaFacturas(): Promise<any> {
-  inicializarOAuth2()
 
   const carpetaFacturas = await getFolderByName('FACTURAS')
   if (!carpetaFacturas) {
@@ -69,7 +56,6 @@ async function obtenerCarpetaFacturas(): Promise<any> {
  * Si no existe, lanza error
  */
 async function obtenerCarpetaEntrada(): Promise<any> {
-  inicializarOAuth2()
 
   const carpetaFacturas = await obtenerCarpetaFacturas()
   const carpetaEntrada = await getFolderByName('ENTRADA', carpetaFacturas.id)
@@ -92,7 +78,6 @@ export async function listarPDFsEnEntrada(
   pageToken?: string
 ): Promise<ListadoFacturasResult> {
   try {
-    inicializarOAuth2()
 
     const carpetaEntrada = await obtenerCarpetaEntrada()
 
@@ -138,9 +123,8 @@ export async function listarPDFsEnEntrada(
  */
 export async function obtenerMetadataArchivo(driveFileId: string): Promise<FacturaPDF | null> {
   try {
-    inicializarOAuth2()
 
-    const auth = getOAuth2Client()
+    const auth = getServiceAccountAuth()
     const drive = google.drive({ version: 'v3', auth })
 
     const file = await drive.files.get({
@@ -183,9 +167,8 @@ export async function crearEstructuraFacturas(): Promise<{
   carpetasCreadas?: string[]
 }> {
   try {
-    inicializarOAuth2()
 
-    const auth = getOAuth2Client()
+    const auth = getServiceAccountAuth()
     const drive = google.drive({ version: 'v3', auth })
 
     const carpetasCreadas: string[] = []
@@ -326,7 +309,6 @@ export async function crearEstructuraFacturas(): Promise<{
  */
 async function calcularHashPDF(driveFileId: string): Promise<string> {
   try {
-    inicializarOAuth2()
     const buffer = await downloadFileAsBuffer(driveFileId)
     const hash = crypto.createHash('sha256').update(buffer).digest('hex')
     return hash
@@ -423,7 +405,6 @@ export async function detectarYRegistrarFacturasNuevasConProveedor(
   }>
 }> {
   try {
-    inicializarOAuth2()
 
     const resultadoListado = await listarPDFsEnEntrada()
     if (!resultadoListado.exitoso) {
@@ -520,7 +501,6 @@ export async function verificarEstructuraFacturas(): Promise<{
   error?: string
 }> {
   try {
-    inicializarOAuth2()
 
     // Intentar obtener las carpetas
     try {

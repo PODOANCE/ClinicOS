@@ -1,8 +1,8 @@
 import { google } from 'googleapis'
-import { getOAuth2Client } from './google-auth'
+import { getServiceAccountAuth } from './google-auth'
 
 export function getDriveClient() {
-  const auth = getOAuth2Client()
+  const auth = getServiceAccountAuth()
   return google.drive({ version: 'v3', auth })
 }
 

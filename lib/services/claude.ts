@@ -5,15 +5,18 @@ const client = new Anthropic({
 })
 
 /**
- * Extrae texto de un PDF usando pdf-parse
- * Si no hay texto suficiente, retorna null (indica que es un escaneo/imagen)
+ * Extrae texto de un PDF usando pdf-parse (API v2: clase PDFParse, no la
+ * función callable de v1). Si no hay texto suficiente, retorna null (indica
+ * que es un escaneo/imagen y requiere revisión manual). Un fallo real de
+ * lectura se propaga como excepción: nunca se sustituye por datos de
+ * prueba, para no confundir un PDF ilegible con un PDF leído correctamente.
  */
 export async function extraerTextoDelPdf(pdfBuffer: Buffer): Promise<string | null> {
+  const { PDFParse } = require('pdf-parse')
+  const parser = new PDFParse({ data: pdfBuffer })
   try {
-    // Import dinámico de pdf-parse
-    const pdfParse = require('pdf-parse')
-    const data = await pdfParse(pdfBuffer)
-    const texto = data.text.trim()
+    const resultado = await parser.getText()
+    const texto = resultado.text.trim()
 
     // Si el PDF tiene muy poco texto, probablemente sea un escaneo
     if (texto.length < 100) {
@@ -21,31 +24,8 @@ export async function extraerTextoDelPdf(pdfBuffer: Buffer): Promise<string | nu
     }
 
     return texto
-  } catch (error) {
-    // MOCK: Si falla extracción (DOMMatrix, etc), devolver texto de prueba
-    console.log('[MOCK] Extracción de texto falló, usando texto ficticio')
-    console.log('Error:', error instanceof Error ? error.message : 'desconocido')
-
-    const textoMock = `
-FACTURA DE PRUEBA
-
-Número de Factura: FAC-2026-001234
-Fecha de Emisión: 2026-08-29
-Fecha de Vencimiento: 2026-09-28
-
-Proveedor: Proveedor Test S.L.
-NIF/CIF: A12345678
-
-Concepto: Servicios profesionales de consultoría
-
-Base Imponible: 1000.00 EUR
-IVA (21%): 210.00 EUR
-Total: 1210.00 EUR
-
-Moneda: EUR
-IBAN: ES1234567890123456789012
-    `
-    return textoMock
+  } finally {
+    if (typeof parser.destroy === 'function') await parser.destroy()
   }
 }
 
