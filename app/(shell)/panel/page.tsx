@@ -46,6 +46,11 @@ const MESES_LARGO = [
 ]
 const COLORES_ANIO = ['#183B5F', '#F18852', '#94C0D4', '#F5CA77', '#F3B6A1']
 
+// Mismo PIN que la herramienta original. No es la barrera de seguridad real
+// (esa es RLS + el permiso PanelControl): es solo para que, si alguien deja
+// la sesión abierta, no vea de un vistazo los datos financieros.
+const PIN_DIRECCION = '6969'
+
 function eur(n: number): string {
   return Math.round(n).toLocaleString('es-ES') + ' €'
 }
@@ -197,18 +202,26 @@ export default function PanelControlPage() {
           {puedeEditar && (
             <button
               onClick={() => {
-                const seVaAOcultar = !modoPresentacion
-                setModoPresentacion(seVaAOcultar)
-                if (seVaAOcultar) {
-                  const tabActualEsSensible = TABS.find((t) => t.id === tab)?.sensible
-                  if (tabActualEsSensible) setTab('resumen')
+                if (modoPresentacion) {
+                  // Quiere desbloquear: exige PIN. Ocultar de nuevo es libre.
+                  const pin = prompt('PIN de dirección para ver los datos financieros:')
+                  if (pin === null) return
+                  if (pin !== PIN_DIRECCION) {
+                    alert('PIN incorrecto')
+                    return
+                  }
+                  setModoPresentacion(false)
+                  return
                 }
+                setModoPresentacion(true)
+                const tabActualEsSensible = TABS.find((t) => t.id === tab)?.sensible
+                if (tabActualEsSensible) setTab('resumen')
               }}
               className={`px-4 py-2 rounded-md text-sm font-medium border ${
                 modoPresentacion ? 'bg-white text-gray-700 border-gray-300' : 'bg-orange-500 text-white border-orange-500'
               }`}
             >
-              {modoPresentacion ? '🔓 Ver datos financieros' : '🙈 Ocultar datos financieros'}
+              {modoPresentacion ? '🔒 Ver datos financieros' : '🙈 Ocultar datos financieros'}
             </button>
           )}
         </div>

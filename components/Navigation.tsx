@@ -37,46 +37,58 @@ export function Navigation() {
     ...(puedeVerPanel ? [{ nombre: 'Panel de Control', href: '/panel' }] : []),
   ]
 
+  const DENIM = '#183B5F'
+  const PUMPKIN = '#F18852'
+
   if (loading) {
     return (
-      <nav style={{ width: '240px', backgroundColor: '#fff', borderRight: '1px solid #ddd', padding: '1rem' }}>
-        <div style={{ fontSize: '0.875rem', color: '#999' }}>Cargando...</div>
+      <nav style={{ backgroundColor: '#fff', borderBottom: '1px solid #e2e8f0', padding: '0.6rem 1.5rem' }}>
+        <div style={{ fontSize: '0.8rem', color: '#999' }}>Cargando...</div>
       </nav>
     )
   }
 
   return (
-    <nav style={{ width: '240px', backgroundColor: '#fff', borderRight: '1px solid #ddd', padding: '1rem 0' }}>
-      <div style={{ marginBottom: '2rem' }}>
-        <h2 style={{ padding: '0 1rem', fontSize: '0.75rem', fontWeight: '600', textTransform: 'uppercase', color: '#999', marginBottom: '1rem' }}>
-          Menú
-        </h2>
-
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-          {navItems.map(item => {
-            const isActive = pathname === item.href
-            return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  style={{
-                    display: 'block',
-                    padding: '0.75rem 1rem',
-                    color: isActive ? '#000' : '#666',
-                    textDecoration: 'none',
-                    backgroundColor: isActive ? '#f0f0f0' : 'transparent',
-                    borderLeft: isActive ? '3px solid #000' : '3px solid transparent',
-                    fontSize: '0.875rem',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  {item.nombre}
-                </Link>
-              </li>
-            )
-          })}
-        </ul>
-      </div>
+    <nav
+      style={{
+        backgroundColor: '#fff',
+        borderBottom: '1px solid #e2e8f0',
+        padding: '0.5rem 1.25rem',
+        display: 'flex',
+        gap: '0.4rem',
+        flexWrap: 'wrap',
+        boxShadow: '0 2px 6px rgba(24,59,95,0.05)',
+      }}
+    >
+      {navItems.map((item) => {
+        const isActive = pathname === item.href
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            style={{
+              display: 'inline-block',
+              padding: '0.45rem 0.9rem',
+              color: isActive ? '#fff' : '#4a5a6a',
+              textDecoration: 'none',
+              backgroundColor: isActive ? DENIM : 'transparent',
+              borderRadius: '20px',
+              fontSize: '0.85rem',
+              fontWeight: isActive ? 700 : 600,
+              borderBottom: !isActive ? '2px solid transparent' : undefined,
+              transition: 'all 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              if (!isActive) e.currentTarget.style.color = PUMPKIN
+            }}
+            onMouseLeave={(e) => {
+              if (!isActive) e.currentTarget.style.color = '#4a5a6a'
+            }}
+          >
+            {item.nombre}
+          </Link>
+        )
+      })}
     </nav>
   )
 }

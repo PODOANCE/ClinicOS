@@ -34,16 +34,19 @@ function necesitaPedido(p: StockProducto): boolean {
 }
 
 const dotColor: Record<Estado, string> = {
-  ok: 'bg-green-500',
-  warn: 'bg-yellow-500',
+  ok: 'bg-emerald-500',
+  warn: 'bg-amber-500',
   danger: 'bg-red-500',
 }
 
 const badgeColor: Record<Estado, string> = {
-  ok: 'bg-green-100 text-green-800',
-  warn: 'bg-yellow-100 text-yellow-800',
+  ok: 'bg-emerald-100 text-emerald-800',
+  warn: 'bg-amber-100 text-amber-800',
   danger: 'bg-red-100 text-red-800',
 }
+
+const DENIM = '#183B5F'
+const PUMPKIN = '#F18852'
 
 interface ProductoForm {
   nombre: string
@@ -435,51 +438,71 @@ export default function StockPage() {
       {/* Cabecera */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-3xl font-bold">Stock</h1>
-          <p className="text-gray-600 mt-1 text-sm">
-            {resumen.total} materiales ·{' '}
-            <span className="text-green-700">🟢 {resumen.ok}</span> ·{' '}
-            <span className="text-yellow-700">🟡 {resumen.warn}</span> ·{' '}
-            <span className="text-red-700">🔴 {resumen.danger}</span>
-          </p>
+          <h1 className="text-3xl font-bold" style={{ color: DENIM }}>Stock</h1>
+          <p className="text-gray-500 mt-1 text-sm">Inventario de consulta y taller</p>
         </div>
         <div className="flex items-center gap-2">
           {puedeGestionar && (
             <button
               onClick={() => setEditMode((v) => !v)}
-              className={`px-4 py-2 rounded-md text-sm font-medium border ${
-                editMode ? 'bg-black text-white border-black' : 'bg-white text-gray-700 border-gray-300'
-              }`}
+              className="px-4 py-2 rounded-full text-sm font-semibold border transition-colors"
+              style={
+                editMode
+                  ? { backgroundColor: DENIM, color: '#fff', borderColor: DENIM }
+                  : { backgroundColor: '#fff', color: DENIM, borderColor: '#cbd5e1' }
+              }
             >
               {editMode ? '✅ Listo' : '✏️ Editar'}
             </button>
           )}
           <button
             onClick={() => setPedidoAbierto(true)}
-            className="px-4 py-2 rounded-md text-sm font-medium bg-blue-600 text-white hover:bg-blue-700"
+            className="px-4 py-2 rounded-full text-sm font-semibold text-white transition-colors"
+            style={{ backgroundColor: PUMPKIN }}
           >
             📋 Necesito pedir ({resumen.pedir})
           </button>
         </div>
       </div>
 
+      {/* Tarjetas KPI */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="rounded-xl border border-gray-200 bg-white shadow-sm px-4 py-3">
+          <div className="text-2xl font-bold" style={{ color: DENIM }}>{resumen.total}</div>
+          <div className="text-xs text-gray-500 font-medium mt-0.5">Materiales</div>
+        </div>
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+          <div className="text-2xl font-bold text-emerald-700">{resumen.ok}</div>
+          <div className="text-xs text-emerald-700 font-medium mt-0.5">🟢 Al día</div>
+        </div>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <div className="text-2xl font-bold text-amber-700">{resumen.warn}</div>
+          <div className="text-xs text-amber-700 font-medium mt-0.5">🟡 Reponer</div>
+        </div>
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+          <div className="text-2xl font-bold text-red-700">{resumen.danger}</div>
+          <div className="text-xs text-red-700 font-medium mt-0.5">🔴 Crítico</div>
+        </div>
+      </div>
+
       {editMode && (
-        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm rounded-md px-4 py-2">
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-md px-4 py-2">
           ✏️ Modo edición — edita materiales, renombra o crea grupos, añade o archiva materiales.
         </div>
       )}
 
       {/* Pestañas */}
-      <div className="flex gap-2 border-b border-gray-200">
+      <div className="flex gap-2 flex-wrap">
         {categoriasNivel1.map((cat) => (
           <button
             key={cat.id}
             onClick={() => setTabActivo(cat.id)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+            className="px-5 py-2 rounded-full text-sm font-semibold transition-colors"
+            style={
               tabActivo === cat.id
-                ? 'border-black text-black'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
+                ? { backgroundColor: DENIM, color: '#fff' }
+                : { backgroundColor: '#fff', color: '#4a5a6a', border: '1px solid #e2e8f0' }
+            }
           >
             {cat.nombre}
           </button>
@@ -493,8 +516,11 @@ export default function StockPage() {
           const alertas = items.filter((p) => getEstado(p) !== 'ok').length
 
           return (
-            <div key={grupo.id} className="bg-white rounded-lg shadow">
-              <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+            <div key={grupo.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div
+                className="px-4 py-3 flex items-center justify-between"
+                style={{ backgroundColor: '#f4f7fb', borderBottom: '1px solid #e2e8f0' }}
+              >
                 {renombrandoGrupoId === grupo.id ? (
                   <div className="flex items-center gap-2 flex-1">
                     <input
@@ -517,10 +543,10 @@ export default function StockPage() {
                     </button>
                   </div>
                 ) : (
-                  <h3 className="font-semibold text-gray-800">
+                  <h3 className="font-semibold" style={{ color: DENIM }}>
                     {grupo.nombre}
                     {alertas > 0 && (
-                      <span className="ml-2 text-xs font-normal text-gray-500">
+                      <span className="ml-2 text-xs font-normal px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
                         {alertas} por revisar
                       </span>
                     )}
@@ -559,7 +585,7 @@ export default function StockPage() {
 
                   if (editandoProductoId === p.id) {
                     return (
-                      <div key={p.id} className="p-4 bg-gray-50 space-y-3">
+                      <div key={p.id} className="p-4 bg-blue-50/40 space-y-3">
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">Nombre</label>
@@ -645,7 +671,8 @@ export default function StockPage() {
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleGuardarEdicion(p.id)}
-                            className="px-3 py-1.5 bg-black text-white rounded text-sm"
+                            className="px-3 py-1.5 text-white rounded font-medium text-sm"
+                            style={{ backgroundColor: DENIM }}
                           >
                             Guardar
                           </button>
@@ -661,20 +688,20 @@ export default function StockPage() {
                   }
 
                   return (
-                    <div key={p.id} className="flex items-center justify-between px-4 py-3 gap-3">
+                    <div key={p.id} className="flex items-center justify-between px-4 py-3 gap-3 hover:bg-gray-50 transition-colors">
                       <div className="flex items-center gap-3 min-w-0">
                         <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${dotColor[estado]}`} />
                         <div className="min-w-0">
                           <div className="font-medium text-gray-900 truncate">{p.nombre}</div>
                           <div className="text-xs text-gray-500">
-                            {p.stock_actual} {p.unidad} · mín {p.stock_minimo}
+                            <span className="font-semibold text-gray-700">{p.stock_actual} {p.unidad}</span> · mín {p.stock_minimo}
                             {editMode && ` · crít ${p.stock_critico} · ${p.proveedor_texto || 'sin proveedor'}`}
                           </div>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className={`hidden sm:inline-block text-xs px-2 py-0.5 rounded-full ${badgeColor[estado]}`}>
+                        <span className={`hidden sm:inline-block text-xs px-2 py-0.5 rounded-full font-medium ${badgeColor[estado]}`}>
                           {estado === 'ok' ? 'OK' : estado === 'warn' ? 'Reponer' : 'Crítico'}
                         </span>
 
@@ -683,14 +710,14 @@ export default function StockPage() {
                             <button
                               onClick={() => handleClick(p, 'CONSUMO')}
                               disabled={busy || p.stock_actual === 0}
-                              className="w-8 h-8 rounded border border-gray-300 text-gray-700 hover:bg-gray-100 disabled:opacity-40"
+                              className="w-8 h-8 rounded-full border-2 border-red-200 text-red-600 font-bold hover:bg-red-50 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
                             >
                               −
                             </button>
                             <button
                               onClick={() => handleClick(p, 'ENTRADA')}
                               disabled={busy}
-                              className="w-8 h-8 rounded border border-gray-300 text-gray-700 hover:bg-gray-100 disabled:opacity-40"
+                              className="w-8 h-8 rounded-full border-2 border-emerald-200 text-emerald-600 font-bold hover:bg-emerald-50 disabled:opacity-30 transition-colors"
                             >
                               +
                             </button>
@@ -801,7 +828,8 @@ export default function StockPage() {
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleCrearProducto(grupo.id)}
-                            className="px-3 py-1.5 bg-black text-white rounded text-sm"
+                            className="px-3 py-1.5 text-white rounded font-medium text-sm"
+                            style={{ backgroundColor: DENIM }}
                           >
                             Añadir
                           </button>
@@ -847,7 +875,8 @@ export default function StockPage() {
               />
               <button
                 onClick={() => handleCrearGrupo(tabActivo)}
-                className="px-3 py-1.5 bg-black text-white rounded text-sm"
+                className="px-3 py-1.5 text-white rounded font-medium text-sm"
+                style={{ backgroundColor: DENIM }}
               >
                 Crear grupo
               </button>
@@ -927,7 +956,11 @@ export default function StockPage() {
               >
                 Cancelar
               </button>
-              <button onClick={handleGuardarAjuste} className="px-4 py-2 bg-black text-white rounded text-sm">
+              <button
+                onClick={handleGuardarAjuste}
+                className="px-4 py-2 text-white rounded font-medium text-sm"
+                style={{ backgroundColor: DENIM }}
+              >
                 Guardar ajuste
               </button>
             </div>
@@ -993,7 +1026,8 @@ export default function StockPage() {
                   )}
                   <button
                     onClick={copiarListaCompra}
-                    className="w-full py-2.5 bg-black text-white rounded-md text-sm font-medium"
+                    className="w-full py-2.5 text-white rounded-md text-sm font-semibold"
+                    style={{ backgroundColor: PUMPKIN }}
                   >
                     📋 Copiar lista de pedido
                   </button>

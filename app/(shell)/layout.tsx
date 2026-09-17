@@ -9,12 +9,10 @@ export default function ShellLayout({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       <Header />
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <Navigation />
-        <main style={{ flex: 1, overflow: 'auto', padding: '2rem' }}>
-          {children}
-        </main>
-      </div>
+      <Navigation />
+      <main style={{ flex: 1, overflow: 'auto', backgroundColor: '#f4f7f9' }}>
+        {children}
+      </main>
     </div>
   )
 }

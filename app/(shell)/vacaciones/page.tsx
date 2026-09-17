@@ -109,10 +109,7 @@ export default function VacacionesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [mesActual, setMesActual] = useState(() => {
-    const hoy = new Date()
-    return new Date(hoy.getFullYear(), hoy.getMonth(), 1)
-  })
+  const [anioActivo, setAnioActivo] = useState(() => new Date().getFullYear())
   const [editMode, setEditMode] = useState(false)
   const [diaSeleccionado, setDiaSeleccionado] = useState<string | null>(null)
   const [panelPeriodosAbierto, setPanelPeriodosAbierto] = useState(false)
@@ -179,14 +176,14 @@ export default function VacacionesPage() {
     [trabajadores]
   )
 
-  // ── Mapa de días del mes visible ──────────────────────────────────────
-  const dayMapMes = useMemo(() => {
+  // ── Mapa de días del año visible ────────────────────────────────────
+  const dayMapAnio = useMemo(() => {
     const map = new Map<string, DiaEntrada[]>()
-    const inicioMes = mesActual
-    const finMes = new Date(mesActual.getFullYear(), mesActual.getMonth() + 1, 0)
+    const inicioAnio = new Date(anioActivo, 0, 1)
+    const finAnio = new Date(anioActivo, 11, 31)
     for (const p of periodos) {
       for (const d of diasEnPeriodo(p)) {
-        if (d < inicioMes || d > finMes) continue
+        if (d < inicioAnio || d > finAnio) continue
         const k = keyLocal(d)
         const arr = map.get(k) ?? []
         arr.push({ trabajadorId: p.trabajador_id, periodoId: p.id, tipo: p.tipo })
@@ -194,48 +191,44 @@ export default function VacacionesPage() {
       }
     }
     return map
-  }, [periodos, mesActual])
+  }, [periodos, anioActivo])
 
   // ── Días de vacaciones usados por trabajador en el año visible ────────
   const usadosPorTrabajador = useMemo(() => {
-    const year = mesActual.getFullYear()
     const map: Record<string, number> = {}
     for (const p of periodos) {
       if (p.tipo !== 'VACACIONES') continue
       for (const d of diasEnPeriodo(p)) {
-        if (d.getFullYear() !== year) continue
+        if (d.getFullYear() !== anioActivo) continue
         if (!isWeekday(d)) continue
         if (festivoKeys.has(keyLocal(d))) continue
         map[p.trabajador_id] = (map[p.trabajador_id] ?? 0) + 1
       }
     }
     return map
-  }, [periodos, festivoKeys, mesActual])
+  }, [periodos, festivoKeys, anioActivo])
 
-  // ── Grid del mes (semanas de lunes a domingo) ─────────────────────────
-  const semanas = useMemo(() => {
-    const year = mesActual.getFullYear()
-    const month = mesActual.getMonth()
-    const primerDia = new Date(year, month, 1)
-    const ultimoDia = new Date(year, month + 1, 0)
+  // ── Grid de un mes concreto del año activo (semanas L-D) ──────────────
+  function semanasDelMes(mes: number): (Date | null)[][] {
+    const primerDia = new Date(anioActivo, mes, 1)
+    const ultimoDia = new Date(anioActivo, mes + 1, 0)
     const offsetInicio = (primerDia.getDay() + 6) % 7
     const dias: (Date | null)[] = Array(offsetInicio).fill(null)
-    for (let d = 1; d <= ultimoDia.getDate(); d++) dias.push(new Date(year, month, d))
+    for (let d = 1; d <= ultimoDia.getDate(); d++) dias.push(new Date(anioActivo, mes, d))
     while (dias.length % 7 !== 0) dias.push(null)
     const filas: (Date | null)[][] = []
     for (let i = 0; i < dias.length; i += 7) filas.push(dias.slice(i, i + 7))
     return filas
-  }, [mesActual])
-
-  function irMesAnterior() {
-    setMesActual((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))
   }
-  function irMesSiguiente() {
-    setMesActual((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))
+
+  function irAnioAnterior() {
+    setAnioActivo((a) => a - 1)
+  }
+  function irAnioSiguiente() {
+    setAnioActivo((a) => a + 1)
   }
   function irHoy() {
-    const hoy = new Date()
-    setMesActual(new Date(hoy.getFullYear(), hoy.getMonth(), 1))
+    setAnioActivo(new Date().getFullYear())
   }
 
   function estiloFondoDia(entradas: DiaEntrada[]): React.CSSProperties {
@@ -422,16 +415,12 @@ export default function VacacionesPage() {
     return <div className="p-6 text-red-600">{error}</div>
   }
 
-  const tituloMes =
-    mesActual.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }).charAt(0).toUpperCase() +
-    mesActual.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }).slice(1)
-
   const hoyKey = keyLocal(new Date())
   const hoyMedianoche = new Date()
   hoyMedianoche.setHours(0, 0, 0, 0)
 
   const festivoDia = diaSeleccionado ? festivoPorFecha.get(diaSeleccionado) : undefined
-  const entradasDia = diaSeleccionado ? dayMapMes.get(diaSeleccionado) ?? [] : []
+  const entradasDia = diaSeleccionado ? dayMapAnio.get(diaSeleccionado) ?? [] : []
   const trabajadoresDisponiblesDia = trabajadoresOrdenados.filter(
     (t) => !entradasDia.some((e) => e.trabajadorId === t.id)
   )
@@ -518,64 +507,72 @@ export default function VacacionesPage() {
         })}
       </div>
 
-      {/* Navegación de mes */}
+      {/* Navegación de año */}
       <div className="flex items-center justify-between bg-white rounded-lg shadow p-3">
-        <button onClick={irMesAnterior} className="w-9 h-9 rounded border border-gray-300 text-gray-700 hover:bg-gray-100">
+        <button onClick={irAnioAnterior} className="w-9 h-9 rounded border border-gray-300 text-gray-700 hover:bg-gray-100">
           ←
         </button>
         <div className="flex items-center gap-3">
-          <h2 className="text-lg font-semibold text-gray-800">{tituloMes}</h2>
+          <h2 className="text-lg font-semibold text-gray-800">{anioActivo}</h2>
           <button onClick={irHoy} className="text-xs px-2 py-1 border border-gray-300 rounded text-gray-600 hover:bg-gray-100">
             Hoy
           </button>
         </div>
-        <button onClick={irMesSiguiente} className="w-9 h-9 rounded border border-gray-300 text-gray-700 hover:bg-gray-100">
+        <button onClick={irAnioSiguiente} className="w-9 h-9 rounded border border-gray-300 text-gray-700 hover:bg-gray-100">
           →
         </button>
       </div>
 
-      {/* Calendario */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="grid grid-cols-7 border-b border-gray-100 bg-gray-50">
-          {DIAS_SEMANA.map((d) => (
-            <div key={d} className="text-center text-xs font-medium text-gray-500 py-2">
-              {d}
+      {/* Calendario: los 12 meses del año a la vez */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {Array.from({ length: 12 }, (_, mes) => {
+          const nombreMes = new Date(anioActivo, mes, 1).toLocaleDateString('es-ES', { month: 'long' })
+          return (
+            <div key={mes} className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="px-3 py-2 border-b border-gray-100 bg-gray-50">
+                <h3 className="text-sm font-semibold text-gray-800 capitalize">{nombreMes}</h3>
+              </div>
+              <div className="grid grid-cols-7">
+                {DIAS_SEMANA.map((d) => (
+                  <div key={d} className="text-center text-[10px] font-medium text-gray-400 py-1">
+                    {d}
+                  </div>
+                ))}
+              </div>
+              {semanasDelMes(mes).map((semana, i) => (
+                <div key={i} className="grid grid-cols-7">
+                  {semana.map((d, j) => {
+                    if (!d) return <div key={j} className="h-7" />
+                    const k = keyLocal(d)
+                    const entradas = dayMapAnio.get(k) ?? []
+                    const festivo = festivoPorFecha.get(k)
+                    const esHoy = k === hoyKey
+                    const esPasado = d < hoyMedianoche
+                    return (
+                      <button
+                        key={j}
+                        onClick={() => setDiaSeleccionado(k)}
+                        style={estiloFondoDia(entradas)}
+                        title={festivo ? festivo.nombre : undefined}
+                        className={`h-7 text-[11px] relative hover:brightness-95 transition flex items-center justify-center ${
+                          esPasado ? 'opacity-50' : ''
+                        } ${esHoy ? 'ring-1 ring-inset ring-black font-bold' : ''}`}
+                      >
+                        {festivo && <span className="absolute top-0 left-0 right-0 h-0.5 bg-amber-500" />}
+                        <span className={entradas.length > 0 ? 'text-white drop-shadow' : 'text-gray-700'}>{d.getDate()}</span>
+                        {entradas.length > 1 && (
+                          <span className="absolute -top-0.5 -right-0.5 bg-gray-900 text-white text-[8px] rounded-full w-3 h-3 flex items-center justify-center">
+                            {entradas.length}
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        {semanas.map((semana, i) => (
-          <div key={i} className="grid grid-cols-7 border-b border-gray-50 last:border-b-0">
-            {semana.map((d, j) => {
-              if (!d) return <div key={j} className="min-h-[64px] border-r border-gray-50 last:border-r-0 bg-gray-50/40" />
-              const k = keyLocal(d)
-              const entradas = dayMapMes.get(k) ?? []
-              const festivo = festivoPorFecha.get(k)
-              const esFinDeSemana = d.getDay() === 0 || d.getDay() === 6
-              const esHoy = k === hoyKey
-              const esPasado = d < hoyMedianoche
-              return (
-                <button
-                  key={j}
-                  onClick={() => setDiaSeleccionado(k)}
-                  style={estiloFondoDia(entradas)}
-                  className={`min-h-[64px] p-1.5 border-r border-gray-50 last:border-r-0 text-left relative hover:brightness-95 transition ${
-                    esFinDeSemana && entradas.length === 0 && !festivo ? 'bg-gray-50/60' : ''
-                  } ${esPasado ? 'opacity-60' : ''} ${esHoy ? 'ring-2 ring-inset ring-black' : ''}`}
-                >
-                  {festivo && <span className="absolute top-0 left-0 right-0 h-1 bg-amber-500" />}
-                  <span className="inline-block bg-white/85 text-gray-800 text-xs font-medium rounded px-1">
-                    {d.getDate()}
-                  </span>
-                  {entradas.length > 1 && (
-                    <span className="absolute bottom-1 right-1 bg-gray-900 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
-                      {entradas.length}
-                    </span>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* Modal de detalle del día */}
