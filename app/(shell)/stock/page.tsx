@@ -705,7 +705,7 @@ export default function StockPage() {
                           {estado === 'ok' ? 'OK' : estado === 'warn' ? 'Reponer' : 'Crítico'}
                         </span>
 
-                        {puedeEditar && (
+                        {editMode && puedeEditar ? (
                           <>
                             <button
                               onClick={() => handleClick(p, 'CONSUMO')}
@@ -722,6 +722,17 @@ export default function StockPage() {
                               +
                             </button>
                           </>
+                        ) : (
+                          <div className="hidden sm:block w-16 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${
+                                estado === 'ok' ? 'bg-emerald-500' : estado === 'warn' ? 'bg-amber-500' : 'bg-red-500'
+                              }`}
+                              style={{
+                                width: `${Math.min(100, Math.round((p.stock_actual / Math.max(1, p.stock_minimo * 2)) * 100))}%`,
+                              }}
+                            />
+                          </div>
                         )}
 
                         {editMode && (

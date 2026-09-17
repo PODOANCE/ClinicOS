@@ -231,8 +231,12 @@ export default function VacacionesPage() {
     setAnioActivo(new Date().getFullYear())
   }
 
-  function estiloFondoDia(entradas: DiaEntrada[]): React.CSSProperties {
-    if (entradas.length === 0) return {}
+  function estiloFondoDia(entradas: DiaEntrada[], esFestivo: boolean, esFinde: boolean): React.CSSProperties {
+    if (entradas.length === 0) {
+      if (esFestivo) return { background: '#fde68a' }
+      if (esFinde) return { background: '#f1f5f9' }
+      return {}
+    }
     if (entradas.length === 1) {
       const t = trabajadoresPorId.get(entradas[0].trabajadorId)
       return { background: t?.color ?? '#999' }
@@ -533,8 +537,13 @@ export default function VacacionesPage() {
                 <h3 className="text-sm font-semibold text-gray-800 capitalize">{nombreMes}</h3>
               </div>
               <div className="grid grid-cols-7">
-                {DIAS_SEMANA.map((d) => (
-                  <div key={d} className="text-center text-[10px] font-medium text-gray-400 py-1">
+                {DIAS_SEMANA.map((d, idx) => (
+                  <div
+                    key={d}
+                    className={`text-center text-[10px] font-medium py-1 ${
+                      idx === 5 || idx === 6 ? 'text-gray-500 bg-gray-50' : 'text-gray-400'
+                    }`}
+                  >
                     {d}
                   </div>
                 ))}
@@ -548,18 +557,33 @@ export default function VacacionesPage() {
                     const festivo = festivoPorFecha.get(k)
                     const esHoy = k === hoyKey
                     const esPasado = d < hoyMedianoche
+                    const esFinde = j === 5 || j === 6
                     return (
                       <button
                         key={j}
                         onClick={() => setDiaSeleccionado(k)}
-                        style={estiloFondoDia(entradas)}
+                        style={estiloFondoDia(entradas, !!festivo, esFinde)}
                         title={festivo ? festivo.nombre : undefined}
                         className={`h-7 text-[11px] relative hover:brightness-95 transition flex items-center justify-center ${
                           esPasado ? 'opacity-50' : ''
                         } ${esHoy ? 'ring-1 ring-inset ring-black font-bold' : ''}`}
                       >
-                        {festivo && <span className="absolute top-0 left-0 right-0 h-0.5 bg-amber-500" />}
-                        <span className={entradas.length > 0 ? 'text-white drop-shadow' : 'text-gray-700'}>{d.getDate()}</span>
+                        {festivo && entradas.length > 0 && (
+                          <span className="absolute top-0 left-0 right-0 h-1 bg-amber-500" />
+                        )}
+                        <span
+                          className={
+                            entradas.length > 0
+                              ? 'text-white drop-shadow'
+                              : festivo
+                                ? 'text-amber-800 font-semibold'
+                                : esFinde
+                                  ? 'text-gray-400'
+                                  : 'text-gray-700'
+                          }
+                        >
+                          {d.getDate()}
+                        </span>
                         {entradas.length > 1 && (
                           <span className="absolute -top-0.5 -right-0.5 bg-gray-900 text-white text-[8px] rounded-full w-3 h-3 flex items-center justify-center">
                             {entradas.length}

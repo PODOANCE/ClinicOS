@@ -295,7 +295,7 @@ export default function HoyPage() {
   }
 
   return (
-    <div>
+    <div style={{ padding: '1.5rem 2rem' }}>
       <h2 style={{ fontSize: '1.5rem', fontWeight: '600', marginBottom: '1.5rem' }}>Hoy</h2>
 
       {error && (

@@ -19,7 +19,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div>
+    <div style={{ padding: '1.5rem 2rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h2 style={{ fontSize: '1.5rem', fontWeight: '600', margin: 0 }}>Dashboard</h2>
         <button
