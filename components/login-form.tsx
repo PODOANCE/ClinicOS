@@ -99,10 +99,6 @@ export function LoginForm() {
             {enviando ? 'Entrando...' : 'Ingresar'}
           </button>
         </form>
-
-        <p style={{ marginTop: '1rem', textAlign: 'center', fontSize: '0.875rem', color: '#666' }}>
-          Usuarios de prueba disponibles para desarrollo
-        </p>
       </div>
     </div>
   )
