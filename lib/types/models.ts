@@ -139,6 +139,90 @@ export interface VacacionesPeriodo {
   updated_by: string;
 }
 
+// Panel de Control 360°: BI financiero interno (facturación, gastos,
+// equipo, comisiones). Área propia 'PanelControl', solo Administración y
+// Administrador del sistema.
+export interface PanelServicio {
+  id: string;
+  nombre: string;
+  precio: number;
+  centro_id: string;
+}
+
+export interface PanelFacturacionMensual {
+  id: string;
+  anio: number;
+  mes: number;
+  facturacion: number;
+  pacientes_nuevos: number;
+  centro_id: string;
+}
+
+export interface PanelServicioRealizado {
+  id: string;
+  servicio: string;
+  anio: number;
+  mes: number;
+  cantidad: number;
+  centro_id: string;
+}
+
+export interface PanelServicioPorProfesional {
+  id: string;
+  servicio: string;
+  anio: number;
+  mes: number;
+  profesional: string;
+  cantidad: number;
+  centro_id: string;
+}
+
+export type PanelGastoTipo = 'VARIABLE' | 'FIJO';
+
+export interface PanelGasto {
+  id: string;
+  tipo: PanelGastoTipo;
+  concepto: string;
+  valor_anual: number;
+  centro_id: string;
+}
+
+export interface PanelEquipoMiembro {
+  id: string;
+  nombre: string;
+  rol: string | null;
+  salario_anual: number;
+  centro_id: string;
+}
+
+export interface PanelComisionesReglas {
+  centro_id: string;
+  umbral_clinica: number;
+  umbral_bonus: number;
+  tope_comision: number;
+  sp_base: number;
+  sp_importe_base: number;
+  sp_tramo: number;
+  sp_incremento: number;
+  pl_base: number;
+  pl_importe_base: number;
+  pl_tramo: number;
+  pl_incremento: number;
+  bonus_recepcion: number;
+  profesionales_comisionan: string[];
+}
+
+export interface PanelComisionMensual {
+  id: string;
+  anio: number;
+  mes: number;
+  profesional: string;
+  fact_con_plantillas: number;
+  fact_sin_plantillas: number;
+  total_plantillas: number;
+  centro_id: string;
+}
+
 export type LeadsResultado = 'CITA_NUEVO' | 'CITA_CONOCIDO' | 'NO_NUEVO' | 'NO_CONOCIDO' | 'SEGURO';
 
 // Llamada de lead registrada en recepción: un registro por llamada recibida
