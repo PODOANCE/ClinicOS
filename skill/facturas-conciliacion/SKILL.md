@@ -11,9 +11,9 @@ pendientes, y ejecutar la conciliación (cruce factura ↔ movimiento).
 
 ## Configuración (rellenar antes de usar)
 
-- `BASE_URL`: la URL pública de ClinicOS, ej. `https://app.podologiarivas.com`
-  (todavía no está desplegada — no uses esta Skill hasta que el usuario te
-  confirme la URL real).
+- `BASE_URL`: `https://clinicos-podologiarivas.vercel.app` — ya desplegada.
+  Cuando dentro de unos días quede activo `app.podologiarivas.com`, cambia
+  esta URL por esa (misma app, solo cambia el dominio).
 - `SKILL_API_KEY`: la clave técnica de `.env.local` de ClinicOS (variable
   `SKILL_API_KEY`). Va en la cabecera `Authorization: Bearer <SKILL_API_KEY>`
   de cada llamada.
