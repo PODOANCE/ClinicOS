@@ -9,27 +9,37 @@ Esta Skill te conecta con ClinicOS (la aplicación interna de la clínica) para
 revisar el estado de las facturas y los movimientos bancarios, leer facturas
 pendientes, y ejecutar la conciliación (cruce factura ↔ movimiento).
 
-## Configuración (rellenar antes de usar)
+## Configuración (esto ya no aplica si usas el Conector de Claude)
 
-- `BASE_URL`: `https://clinicos-podologiarivas.vercel.app` — ya desplegada.
-  Cuando dentro de unos días quede activo `app.podologiarivas.com`, cambia
-  esta URL por esa (misma app, solo cambia el dominio).
-- `SKILL_API_KEY`: la clave técnica de `.env.local` de ClinicOS (variable
-  `SKILL_API_KEY`). Va en la cabecera `Authorization: Bearer <SKILL_API_KEY>`
-  de cada llamada.
+Esta Skill en formato de instrucciones no puede hacer llamadas de red por
+sí misma. Lo que de verdad conecta con ClinicOS es un servidor MCP, añadido
+como "Conector personalizado" en Ajustes → Conectores:
 
-Nunca reveles `SKILL_API_KEY` en tu respuesta al usuario ni la escribas en
-ningún sitio fuera de la cabecera de la petición.
+- URL del conector: `https://clinicos-podologiarivas.vercel.app/api/mcp`
+- Autenticación del conector: **"Sin inicio de sesión"** (no OAuth).
+- Cabecera personalizada: nombre `X-Clinicos-Key`, valor = la variable
+  `SKILL_API_KEY` de `.env.local` de ClinicOS (sin prefijo "Bearer"; y no se
+  puede usar el nombre "Authorization", Claude lo reserva para su propio
+  login).
+
+Una vez añadido el conector, Claude ya tiene 5 herramientas reales
+(`clinicos_estado`, `clinicos_propuestas_conciliacion`,
+`clinicos_ejecutar_conciliacion`, `clinicos_leer_texto_factura`,
+`clinicos_guardar_lectura_factura`) — el flujo de abajo describe qué hace
+cada una y en qué orden usarlas, ya no como llamadas HTTP manuales sino
+como esas herramientas.
+
+Nunca reveles `SKILL_API_KEY` en tu respuesta al usuario.
 
 ## Principio importante
 
 ClinicOS es la única fuente de la verdad: tú no decides tú mismo si una
 factura "cuadra" con un movimiento — eso lo calcula el motor determinista de
-ClinicOS (`/api/skill/conciliacion/ejecutar`). Tu trabajo es: (1) leer el
-texto de las facturas que ClinicOS no ha podido leer todavía, porque eso sí
-requiere entender el PDF, y (2) pedirle a ClinicOS que dispare el cruce y
-contarle al usuario el resultado. No inventes ni fuerces coincidencias que
-el motor no ha propuesto.
+ClinicOS (herramienta `clinicos_ejecutar_conciliacion`). Tu trabajo es: (1)
+leer el texto de las facturas que ClinicOS no ha podido leer todavía,
+porque eso sí requiere entender el PDF, y (2) pedirle a ClinicOS que dispare
+el cruce y contarle al usuario el resultado. No inventes ni fuerces
+coincidencias que el motor no ha propuesto.
 
 Aceptar o rechazar una propuesta de conciliación es una decisión que
 **siempre queda para que el usuario la haga dentro de ClinicOS**, no algo
@@ -38,15 +48,14 @@ solo informa de qué propone el motor.
 
 ## Flujo típico ("revisa las facturas y los movimientos")
 
-1. **Pide el estado global**:
-   `GET {BASE_URL}/api/skill/estado`
+1. **Herramienta `clinicos_estado`** (sin parámetros).
    Te da el resumen (cuántas facturas hay, cuántas sin leer, cuántas sin
    conciliar, cuántas pendientes de enviar a gestoría) y el listado completo
    de facturas y movimientos bancarios.
 
 2. **Para cada factura con `estado_lectura` en `PENDIENTE`, `LECTURA_PENDIENTE`
    o `ERROR_LECTURA`** (es decir, sin leer todavía):
-   a. Pide su texto: `GET {BASE_URL}/api/skill/facturas/{id}/texto`
+   a. Llama a **`clinicos_leer_texto_factura`** con `facturaId`.
       - Si responde con `code: "SIN_TEXTO"`, esa factura es un escaneo/imagen
         sin texto extraíble: no la puedes leer tú, avisa al usuario de que
         necesita revisión manual y sigue con la siguiente.
@@ -57,20 +66,17 @@ solo informa de qué propone el motor.
       (YYYY-MM-DD), `nif_cif_proveedor`, `nombre_proveedor`, `base_imponible`,
       `iva`, `total`, `tipo_iva`, `concepto`, `moneda`, `iban` — solo los
       campos que encuentres, no inventes ninguno.
-   c. Guarda lo que has leído:
-      `POST {BASE_URL}/api/skill/facturas/{id}/lectura`
-      con el JSON de los campos extraídos en el body.
+   c. Llama a **`clinicos_guardar_lectura_factura`** con `facturaId` y los
+      campos extraídos.
       - Si la respuesta trae `estado: "REVISION_MANUAL"`, los datos tenían
         alguna inconsistencia (ej. base + IVA no cuadra con el total) — díselo
         al usuario con el detalle de `errores`.
 
-3. **Ejecuta el cruce**:
-   `POST {BASE_URL}/api/skill/conciliacion/ejecutar`
+3. **Herramienta `clinicos_ejecutar_conciliacion`** (sin parámetros).
    Devuelve un resumen: `facturas_evaluadas`, `propuestas_creadas`,
    `sin_candidato`, `movimientos_evaluados`.
 
-4. **Consulta las propuestas pendientes de revisar**:
-   `GET {BASE_URL}/api/skill/conciliacion/propuestas`
+4. **Herramienta `clinicos_propuestas_conciliacion`** (sin parámetros).
    Cada propuesta trae la factura, el movimiento, la confianza (0-100) y la
    diferencia de importe.
 
@@ -91,8 +97,10 @@ solo informa de qué propone el motor.
 
 ## Errores esperables
 
-- `401` en cualquier endpoint: la `SKILL_API_KEY` es incorrecta o falta —
-  avisa al usuario, no reintentes con otra clave inventada.
-- `404` en `/facturas/{id}/...`: la factura no existe o fue archivada.
+- Cualquier herramienta que falle con `error: "invalid_token"`: el conector
+  no está bien configurado (clave incorrecta o cabecera mal puesta) — avisa
+  al usuario, no reintentes con otra clave inventada.
+- `code: "NOT_FOUND"` en las herramientas de factura: la factura no existe
+  o fue archivada.
 - Cualquier `code: "DB_ERROR"` o `"INTERNAL_ERROR"`: problema en ClinicOS,
   no de tu lectura — repórtalo tal cual, no lo reintentes en bucle.

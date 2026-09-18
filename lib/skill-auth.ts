@@ -6,10 +6,19 @@ import { NextRequest } from 'next/server'
  * credencial técnica única, sin relación con ningún usuario ni permiso de
  * `roles` — cualquier llamada con esta clave puede hacer lo que el endpoint
  * permita, así que solo debe usarse en rutas bajo /api/skill/*.
+ *
+ * Acepta la clave en "Authorization: Bearer <clave>" (para pruebas manuales
+ * con curl) o en la cabecera "X-Clinicos-Key: <clave>" — esta segunda existe
+ * porque el conector personalizado de Claude reserva el nombre
+ * "Authorization" para su propio login y no deja usarlo como cabecera
+ * personalizada.
  */
 export function verificarAuthSkill(request: NextRequest): boolean {
   const esperado = process.env.SKILL_API_KEY
   if (!esperado) return false
+
+  const claveDirecta = request.headers.get('x-clinicos-key')
+  if (claveDirecta) return claveDirecta === esperado
 
   const header = request.headers.get('authorization') || ''
   const token = header.startsWith('Bearer ') ? header.slice('Bearer '.length) : ''

@@ -4,9 +4,11 @@
  * Esto es lo que se añade como "Conector" en la cuenta de Claude del
  * usuario (Ajustes → Conectores → Añadir conector personalizado), con la
  * URL pública de esta ruta y la clave SKILL_API_KEY como cabecera
- * Authorization. Una Skill normal (solo instrucciones) no puede hacer
- * llamadas de red por sí misma — por eso hace falta este servidor MCP,
- * que sí las expone como herramientas reales que Claude puede invocar.
+ * personalizada "X-Clinicos-Key" (Claude reserva "Authorization" para su
+ * propio login, así que no se puede usar ese nombre). Una Skill normal
+ * (solo instrucciones) no puede hacer llamadas de red por sí misma — por
+ * eso hace falta este servidor MCP, que sí las expone como herramientas
+ * reales que Claude puede invocar.
  *
  * Las 5 herramientas son un espejo 1:1 de los endpoints REST bajo
  * /api/skill/* (misma lógica, en lib/services/skill-tools.ts) — se
@@ -15,9 +17,8 @@
  * eso.
  */
 
-import { createMcpHandler, withMcpAuth } from 'mcp-handler'
+import { createMcpHandler } from 'mcp-handler'
 import { z } from 'zod'
-import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js'
 import {
   obtenerEstadoGlobal,
   obtenerPropuestasPendientes,
@@ -146,12 +147,31 @@ const handler = createMcpHandler(
   { basePath: '/api', verboseLogs: false }
 )
 
-async function verificarToken(_req: Request, bearerToken?: string): Promise<AuthInfo | undefined> {
+// No usamos withMcpAuth (esa es para OAuth de verdad): el conector de Claude
+// reserva la cabecera "Authorization" para su propio login y no deja
+// mandarla como cabecera personalizada, así que comprobamos la clave
+// nosotros mismos en "X-Clinicos-Key" (aceptando también "Authorization:
+// Bearer <clave>" para las pruebas manuales con curl / el SDK de MCP).
+function claveValida(request: Request): boolean {
   const esperado = process.env.SKILL_API_KEY
-  if (!esperado || !bearerToken || bearerToken !== esperado) return undefined
-  return { token: bearerToken, clientId: 'clinicos-skill', scopes: [] }
+  if (!esperado) return false
+
+  const claveDirecta = request.headers.get('x-clinicos-key')
+  if (claveDirecta) return claveDirecta === esperado
+
+  const header = request.headers.get('authorization') || ''
+  const token = header.startsWith('Bearer ') ? header.slice('Bearer '.length) : ''
+  return token.length > 0 && token === esperado
 }
 
-const handlerConAuth = withMcpAuth(handler, verificarToken, { required: true })
+async function handlerConAuth(request: Request): Promise<Response> {
+  if (!claveValida(request)) {
+    return new Response(JSON.stringify({ error: 'invalid_token', error_description: 'Clave incorrecta o ausente' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+  return handler(request)
+}
 
 export { handlerConAuth as GET, handlerConAuth as POST }
