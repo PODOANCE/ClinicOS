@@ -156,6 +156,9 @@ function claveValida(request: Request): boolean {
   const esperado = process.env.SKILL_API_KEY
   if (!esperado) return false
 
+  const claveApiKey = request.headers.get('x-api-key')
+  if (claveApiKey) return claveApiKey === esperado
+
   const claveDirecta = request.headers.get('x-clinicos-key')
   if (claveDirecta) return claveDirecta === esperado
 

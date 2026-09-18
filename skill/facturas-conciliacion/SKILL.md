@@ -17,10 +17,12 @@ como "Conector personalizado" en Ajustes → Conectores:
 
 - URL del conector: `https://clinicos-podologiarivas.vercel.app/api/mcp`
 - Autenticación del conector: **"Sin inicio de sesión"** (no OAuth).
-- Cabecera personalizada: nombre `X-Clinicos-Key`, valor = la variable
-  `SKILL_API_KEY` de `.env.local` de ClinicOS (sin prefijo "Bearer"; y no se
-  puede usar el nombre "Authorization", Claude lo reserva para su propio
-  login).
+- Cabecera personalizada: nombre `X-Api-Key`, valor = la variable
+  `SKILL_API_KEY` de `.env.local` de ClinicOS (sin prefijo "Bearer"). No se
+  puede usar el nombre "Authorization" (Claude lo reserva para su propio
+  login) ni nombres inventados como "X-Clinicos-Key" (Claude solo admite un
+  conjunto cerrado de nombres de cabecera ya reconocidos) — "X-Api-Key" sí
+  está en esa lista.
 
 Una vez añadido el conector, Claude ya tiene 5 herramientas reales
 (`clinicos_estado`, `clinicos_propuestas_conciliacion`,
