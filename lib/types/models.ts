@@ -260,3 +260,52 @@ export interface Tarea {
   updated_at: string;
   archived_at?: string | null;
 }
+
+// Seguimiento de revisiones (Biomecánica): cita importada de Organízate
+// (estudio o revisión). Nunca se edita a mano; solo lectura desde el
+// cliente, el alta va por /api/seguimiento/importar.
+export interface SeguimientoCita {
+  id: string;
+  fecha: string;
+  hora: string | null;
+  agenda: string | null;
+  sala: string | null;
+  paciente_raw: string;
+  paciente_clave: string;
+  tratamiento: string;
+  precio: number | null;
+  estado_cita: string | null;
+  huella: string;
+  archivo_importacion_id: string | null;
+  centro_id: string;
+  activo: boolean;
+  created_at: string;
+  created_by: string;
+  updated_at: string;
+  updated_by: string;
+}
+
+export type SeguimientoGestionEstado =
+  | 'PENDIENTE'
+  | 'LLAMADO_NO_CONTESTA'
+  | 'CITA_AGENDADA'
+  | 'RECHAZA'
+  | 'VOLVER_A_LLAMAR';
+
+// Seguimiento de revisiones: una fila por paciente con lo único que el
+// personal gestiona a mano. El resto (estado, prioridad, etc.) se calcula
+// en la aplicación a partir de SeguimientoCita, ver lib/services/seguimiento.ts.
+export interface SeguimientoGestion {
+  id: string;
+  paciente_clave: string;
+  nombre_mostrar: string;
+  cita_futura_manual: boolean;
+  gestion_recontacto: SeguimientoGestionEstado;
+  proximo_intento: string | null;
+  notas: string | null;
+  centro_id: string;
+  created_at: string;
+  created_by: string;
+  updated_at: string;
+  updated_by: string;
+}

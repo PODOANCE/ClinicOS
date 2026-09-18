@@ -15,6 +15,7 @@ export function Navigation() {
   const [puedeVerConciliacion, setPuedeVerConciliacion] = useState(false)
   const [puedeVerLeads, setPuedeVerLeads] = useState(false)
   const [puedeVerPanel, setPuedeVerPanel] = useState(false)
+  const [puedeVerSeguimiento, setPuedeVerSeguimiento] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -24,6 +25,7 @@ export function Navigation() {
       setPuedeVerConciliacion(canUserAccess(roles, 'Facturas', 'editar'))
       setPuedeVerLeads(canUserAccess(roles, 'Leads', 'ver'))
       setPuedeVerPanel(canUserAccess(roles, 'PanelControl', 'ver'))
+      setPuedeVerSeguimiento(canUserAccess(roles, 'Seguimiento', 'ver'))
     })
   }, [user])
 
@@ -34,6 +36,7 @@ export function Navigation() {
     ...(puedeVerVacaciones ? [{ nombre: 'Vacaciones', href: '/vacaciones' }] : []),
     ...(puedeVerConciliacion ? [{ nombre: 'Conciliación', href: '/conciliacion' }] : []),
     ...(puedeVerLeads ? [{ nombre: 'Leads', href: '/leads' }] : []),
+    ...(puedeVerSeguimiento ? [{ nombre: 'Seguimiento', href: '/seguimiento' }] : []),
     ...(puedeVerPanel ? [{ nombre: 'Panel de Control', href: '/panel' }] : []),
   ]
 
