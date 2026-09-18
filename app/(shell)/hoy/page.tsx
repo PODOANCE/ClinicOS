@@ -27,6 +27,18 @@ function formatCreatedAtWithTime(isoStr: string): string {
   return `${fechaFormato} · ${horaFormato}`
 }
 
+const DENIM = '#183B5F'
+const PUMPKIN = '#F18852'
+
+function isTareaVencida(fechaLimite?: string | null): boolean {
+  if (!fechaLimite) return false
+  const limite = new Date(fechaLimite + 'T00:00:00')
+  if (isNaN(limite.getTime())) return false
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+  return limite.getTime() < hoy.getTime()
+}
+
 export default function HoyPage() {
   const { user, loading: userLoading } = useUser()
   const [tareasAbiertas, setTareasAbiertas] = useState<Tarea[]>([])
@@ -295,8 +307,11 @@ export default function HoyPage() {
   }
 
   return (
-    <div style={{ padding: '1.5rem 2rem' }}>
-      <h2 style={{ fontSize: '1.5rem', fontWeight: '600', marginBottom: '1.5rem' }}>Hoy</h2>
+    <div style={{ padding: '2rem' }}>
+      <h2 style={{ color: DENIM, fontWeight: 'bold', fontSize: '1.75rem', margin: 0, marginBottom: '0.25rem' }}>Hoy</h2>
+      <p style={{ color: '#6b7280', fontSize: '0.875rem', marginTop: 0, marginBottom: '1.5rem' }}>
+        Tus tareas pendientes y completadas
+      </p>
 
       {error && (
         <div
@@ -315,7 +330,7 @@ export default function HoyPage() {
       )}
 
       <div style={{ marginBottom: '2rem' }}>
-        <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem' }}>Crear tarea</h3>
+        <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem', color: DENIM }}>Crear tarea</h3>
         <form onSubmit={handleCreateTask} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '400px' }}>
           <div>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
@@ -414,15 +429,16 @@ export default function HoyPage() {
             type="submit"
             disabled={creatingTask}
             style={{
-              padding: '0.75rem',
-              backgroundColor: '#000',
+              padding: '0.75rem 1.5rem',
+              backgroundColor: DENIM,
               color: 'white',
               border: 'none',
-              borderRadius: '4px',
+              borderRadius: '9999px',
               fontSize: '1rem',
-              fontWeight: '500',
+              fontWeight: 600,
               cursor: creatingTask ? 'not-allowed' : 'pointer',
               opacity: creatingTask ? 0.6 : 1,
+              alignSelf: 'flex-start',
             }}
           >
             {creatingTask ? 'Creando...' : 'Crear tarea'}
@@ -431,8 +447,8 @@ export default function HoyPage() {
       </div>
 
       {tareaEditandoId && (
-        <div style={{ marginBottom: '2rem', padding: '1rem', backgroundColor: '#f0f0f0', borderRadius: '4px', border: '1px solid #ddd' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem' }}>Editar tarea</h3>
+        <div style={{ marginBottom: '2rem', padding: '1.25rem', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem', color: DENIM }}>Editar tarea</h3>
           <form onSubmit={(e) => { e.preventDefault(); handleGuardarEdicion() }} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '400px' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
@@ -509,7 +525,7 @@ export default function HoyPage() {
                       backgroundColor: '#dc3545',
                       color: 'white',
                       border: 'none',
-                      borderRadius: '4px',
+                      borderRadius: '9999px',
                       fontSize: '1rem',
                       cursor: guardandoEdicion ? 'not-allowed' : 'pointer',
                       opacity: guardandoEdicion ? 0.6 : 1,
@@ -557,13 +573,13 @@ export default function HoyPage() {
                 onClick={handleCancelarEdicion}
                 disabled={guardandoEdicion}
                 style={{
-                  padding: '0.75rem 1rem',
-                  backgroundColor: '#999',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
+                  padding: '0.75rem 1.25rem',
+                  backgroundColor: '#fff',
+                  color: DENIM,
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '9999px',
                   fontSize: '1rem',
-                  fontWeight: '500',
+                  fontWeight: 600,
                   cursor: guardandoEdicion ? 'not-allowed' : 'pointer',
                   opacity: guardandoEdicion ? 0.6 : 1,
                 }}
@@ -574,13 +590,13 @@ export default function HoyPage() {
                 type="submit"
                 disabled={guardandoEdicion}
                 style={{
-                  padding: '0.75rem 1rem',
-                  backgroundColor: '#000',
+                  padding: '0.75rem 1.25rem',
+                  backgroundColor: DENIM,
                   color: 'white',
                   border: 'none',
-                  borderRadius: '4px',
+                  borderRadius: '9999px',
                   fontSize: '1rem',
-                  fontWeight: '500',
+                  fontWeight: 600,
                   cursor: guardandoEdicion ? 'not-allowed' : 'pointer',
                   opacity: guardandoEdicion ? 0.6 : 1,
                 }}
@@ -592,13 +608,13 @@ export default function HoyPage() {
                 onClick={() => handleEliminarTarea()}
                 disabled={guardandoEdicion}
                 style={{
-                  padding: '0.75rem 1rem',
+                  padding: '0.75rem 1.25rem',
                   backgroundColor: '#dc3545',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '4px',
+                  borderRadius: '9999px',
                   fontSize: '1rem',
-                  fontWeight: '500',
+                  fontWeight: 600,
                   cursor: guardandoEdicion ? 'not-allowed' : 'pointer',
                   opacity: guardandoEdicion ? 0.6 : 1,
                   marginLeft: 'auto',
@@ -612,18 +628,18 @@ export default function HoyPage() {
       )}
 
       <div>
-        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid #ddd' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
           <button
             onClick={() => setVistaActiva('abiertas')}
             style={{
-              padding: '0.75rem 1rem',
-              backgroundColor: 'transparent',
-              border: 'none',
-              borderBottom: vistaActiva === 'abiertas' ? '2px solid #000' : '2px solid transparent',
+              padding: '0.5rem 1.25rem',
+              backgroundColor: vistaActiva === 'abiertas' ? DENIM : '#fff',
+              border: vistaActiva === 'abiertas' ? `1px solid ${DENIM}` : '1px solid #e2e8f0',
+              borderRadius: '9999px',
               fontSize: '0.95rem',
-              fontWeight: vistaActiva === 'abiertas' ? '600' : '400',
+              fontWeight: vistaActiva === 'abiertas' ? 600 : 500,
               cursor: 'pointer',
-              color: '#000',
+              color: vistaActiva === 'abiertas' ? '#fff' : '#4a5a6a',
             }}
           >
             Abiertas ({tareasAbiertas.length})
@@ -631,14 +647,14 @@ export default function HoyPage() {
           <button
             onClick={() => setVistaActiva('hechas')}
             style={{
-              padding: '0.75rem 1rem',
-              backgroundColor: 'transparent',
-              border: 'none',
-              borderBottom: vistaActiva === 'hechas' ? '2px solid #000' : '2px solid transparent',
+              padding: '0.5rem 1.25rem',
+              backgroundColor: vistaActiva === 'hechas' ? DENIM : '#fff',
+              border: vistaActiva === 'hechas' ? `1px solid ${DENIM}` : '1px solid #e2e8f0',
+              borderRadius: '9999px',
               fontSize: '0.95rem',
-              fontWeight: vistaActiva === 'hechas' ? '600' : '400',
+              fontWeight: vistaActiva === 'hechas' ? 600 : 500,
               cursor: 'pointer',
-              color: '#000',
+              color: vistaActiva === 'hechas' ? '#fff' : '#4a5a6a',
             }}
           >
             Hechas ({tareasHechas.length})
@@ -659,10 +675,14 @@ export default function HoyPage() {
                       <div
                         key={tarea.id}
                         style={{
-                          padding: '1rem',
-                          backgroundColor: '#f9f9f9',
-                          border: '1px solid #ddd',
-                          borderRadius: '4px',
+                          padding: '1rem 1.25rem',
+                          backgroundColor: '#fff',
+                          border: '1px solid #e2e8f0',
+                          borderLeft: `4px solid ${
+                            isTareaVencida(tarea.fecha_limite) ? '#ef4444' : tarea.fecha_limite ? '#f59e0b' : DENIM
+                          }`,
+                          borderRadius: '12px',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
                           display: 'flex',
                           justifyContent: 'space-between',
                           alignItems: 'flex-start',
@@ -700,9 +720,9 @@ export default function HoyPage() {
                               backgroundColor: '#2196f3',
                               color: 'white',
                               border: 'none',
-                              borderRadius: '4px',
+                              borderRadius: '9999px',
                               fontSize: '0.875rem',
-                              fontWeight: '500',
+                              fontWeight: 600,
                               cursor: 'pointer',
                               whiteSpace: 'nowrap',
                             }}
@@ -716,9 +736,9 @@ export default function HoyPage() {
                               backgroundColor: '#4caf50',
                               color: 'white',
                               border: 'none',
-                              borderRadius: '4px',
+                              borderRadius: '9999px',
                               fontSize: '0.875rem',
-                              fontWeight: '500',
+                              fontWeight: 600,
                               cursor: 'pointer',
                               whiteSpace: 'nowrap',
                             }}
@@ -743,15 +763,17 @@ export default function HoyPage() {
                       <div
                         key={tarea.id}
                         style={{
-                          padding: '1rem',
-                          backgroundColor: '#f5f5f5',
-                          border: '1px solid #e0e0e0',
-                          borderRadius: '4px',
+                          padding: '1rem 1.25rem',
+                          backgroundColor: '#f8fafc',
+                          border: '1px solid #e2e8f0',
+                          borderLeft: '4px solid #10b981',
+                          borderRadius: '12px',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
                           display: 'flex',
                           justifyContent: 'space-between',
                           alignItems: 'flex-start',
                           gap: '1rem',
-                          opacity: 0.7,
+                          opacity: 0.85,
                         }}
                       >
                         <div style={{ flex: 1 }}>
@@ -785,9 +807,9 @@ export default function HoyPage() {
                               backgroundColor: '#2196f3',
                               color: 'white',
                               border: 'none',
-                              borderRadius: '4px',
+                              borderRadius: '9999px',
                               fontSize: '0.875rem',
-                              fontWeight: '500',
+                              fontWeight: 600,
                               cursor: 'pointer',
                               whiteSpace: 'nowrap',
                             }}
@@ -801,9 +823,9 @@ export default function HoyPage() {
                               backgroundColor: '#dc3545',
                               color: 'white',
                               border: 'none',
-                              borderRadius: '4px',
+                              borderRadius: '9999px',
                               fontSize: '0.875rem',
-                              fontWeight: '500',
+                              fontWeight: 600,
                               cursor: 'pointer',
                               whiteSpace: 'nowrap',
                             }}

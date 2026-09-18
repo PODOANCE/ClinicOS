@@ -4,6 +4,9 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/browser'
 import { useUser } from '@/lib/contexts/UserContext'
 
+const DENIM = '#183B5F'
+const PUMPKIN = '#F18852'
+
 export default function DashboardPage() {
   const router = useRouter()
   const { user, loading } = useUser()
@@ -15,45 +18,44 @@ export default function DashboardPage() {
   }
 
   if (loading) {
-    return <div style={{ padding: '2rem' }}>Cargando...</div>
+    return <div className="p-6 text-gray-500">Cargando...</div>
   }
 
   return (
-    <div style={{ padding: '1.5rem 2rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: '600', margin: 0 }}>Dashboard</h2>
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-3xl font-bold" style={{ color: DENIM }}>
+            ¡Hola{user?.email ? `, ${user.email.split('@')[0]}` : ''}! 👋
+          </h1>
+          <p className="text-gray-500 mt-1 text-sm">Bienvenido de nuevo a ClinicOS</p>
+        </div>
         <button
           onClick={handleLogout}
-          style={{
-            padding: '0.5rem 1rem',
-            backgroundColor: '#dc3545',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            fontSize: '0.875rem',
-            cursor: 'pointer'
-          }}
+          className="px-4 py-2 rounded-full text-sm font-semibold text-white transition-colors"
+          style={{ backgroundColor: PUMPKIN }}
         >
-          Logout
+          Cerrar sesión
         </button>
       </div>
 
-      <div style={{ backgroundColor: '#f9f9f9', padding: '2rem', borderRadius: '8px', border: '1px solid #ddd' }}>
-        <h3 style={{ fontWeight: '600', marginBottom: '1rem' }}>Sesión Activa</h3>
-        <dl style={{ display: 'grid', gap: '0.75rem', fontSize: '0.875rem', margin: 0 }}>
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            <dt style={{ fontWeight: '600', minWidth: '80px' }}>Email:</dt>
-            <dd style={{ margin: 0 }}>{user?.email}</dd>
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+        <h3
+          className="font-semibold px-3 py-2 rounded-lg -mt-2 -mx-2 mb-4 inline-block"
+          style={{ backgroundColor: '#f4f7fb', color: DENIM }}
+        >
+          Sesión activa
+        </h3>
+        <dl className="grid gap-3 text-sm">
+          <div className="flex gap-4">
+            <dt className="font-semibold text-gray-600 min-w-[80px]">Email</dt>
+            <dd className="text-gray-800">{user?.email}</dd>
           </div>
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            <dt style={{ fontWeight: '600', minWidth: '80px' }}>ID:</dt>
-            <dd style={{ margin: 0, fontSize: '0.75rem', color: '#666' }}>{user?.id}</dd>
+          <div className="flex gap-4">
+            <dt className="font-semibold text-gray-600 min-w-[80px]">ID</dt>
+            <dd className="text-xs text-gray-500">{user?.id}</dd>
           </div>
         </dl>
-      </div>
-
-      <div style={{ padding: '1rem', fontSize: '0.75rem', color: '#999', borderTop: '1px solid #ddd', marginTop: '2rem' }}>
-        Fase 1 · Shell operativo · Autenticación simple
       </div>
     </div>
   )

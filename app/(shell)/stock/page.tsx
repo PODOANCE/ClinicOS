@@ -687,17 +687,25 @@ export default function StockPage() {
                     )
                   }
 
+                  const colorNumero =
+                    estado === 'ok' ? 'text-emerald-600' : estado === 'warn' ? 'text-amber-600' : 'text-red-600'
+
                   return (
                     <div key={p.id} className="flex items-center justify-between px-4 py-3 gap-3 hover:bg-gray-50 transition-colors">
-                      <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
                         <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${dotColor[estado]}`} />
                         <div className="min-w-0">
                           <div className="font-medium text-gray-900 truncate">{p.nombre}</div>
                           <div className="text-xs text-gray-500">
-                            <span className="font-semibold text-gray-700">{p.stock_actual} {p.unidad}</span> · mín {p.stock_minimo}
+                            mín {p.stock_minimo}
                             {editMode && ` · crít ${p.stock_critico} · ${p.proveedor_texto || 'sin proveedor'}`}
                           </div>
                         </div>
+                      </div>
+
+                      <div className={`flex items-baseline gap-1 flex-shrink-0 ${colorNumero}`}>
+                        <span className="text-2xl font-extrabold leading-none tabular-nums">{p.stock_actual}</span>
+                        <span className="text-xs font-semibold text-gray-400">{p.unidad}</span>
                       </div>
 
                       <div className="flex items-center gap-2 flex-shrink-0">

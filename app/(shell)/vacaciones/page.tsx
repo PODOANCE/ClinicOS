@@ -41,6 +41,9 @@ const FESTIVO_LABEL: Record<VacacionesFestivoTipo, string> = {
 
 const DIAS_SEMANA = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 
+const DENIM = '#183B5F'
+const PUMPKIN = '#F18852'
+
 // ── Helpers de fecha local (sin desfases de huso horario) ────────────────
 
 function pad2(n: number): string {
@@ -113,6 +116,7 @@ export default function VacacionesPage() {
   const [editMode, setEditMode] = useState(false)
   const [diaSeleccionado, setDiaSeleccionado] = useState<string | null>(null)
   const [panelPeriodosAbierto, setPanelPeriodosAbierto] = useState(false)
+  const [filtroPeriodosTrabajadorId, setFiltroPeriodosTrabajadorId] = useState<string | null>(null)
 
   const [editandoDiasId, setEditandoDiasId] = useState<string | null>(null)
   const [diasEditados, setDiasEditados] = useState(0)
@@ -434,24 +438,31 @@ export default function VacacionesPage() {
       {/* Cabecera */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-3xl font-bold">Vacaciones</h1>
-          <p className="text-gray-600 mt-1 text-sm">Ausencias del equipo — {trabajadores.length} personas</p>
+          <h1 className="text-3xl font-bold" style={{ color: DENIM }}>Vacaciones</h1>
+          <p className="text-gray-500 mt-1 text-sm">Ausencias del equipo — {trabajadores.length} personas</p>
         </div>
         <div className="flex items-center gap-2">
           {puedeEditar && (
             <button
               onClick={() => setEditMode((v) => !v)}
-              className={`px-4 py-2 rounded-md text-sm font-medium border ${
-                editMode ? 'bg-black text-white border-black' : 'bg-white text-gray-700 border-gray-300'
-              }`}
+              className="px-4 py-2 rounded-full text-sm font-semibold border transition-colors"
+              style={
+                editMode
+                  ? { backgroundColor: DENIM, color: '#fff', borderColor: DENIM }
+                  : { backgroundColor: '#fff', color: DENIM, borderColor: '#cbd5e1' }
+              }
             >
               {editMode ? '✅ Listo' : '✏️ Editar'}
             </button>
           )}
           {editMode && puedeEditar && (
             <button
-              onClick={() => setPanelPeriodosAbierto(true)}
-              className="px-4 py-2 rounded-md text-sm font-medium bg-blue-600 text-white hover:bg-blue-700"
+              onClick={() => {
+                setFiltroPeriodosTrabajadorId(null)
+                setPanelPeriodosAbierto(true)
+              }}
+              className="px-4 py-2 rounded-full text-sm font-semibold text-white transition-colors"
+              style={{ backgroundColor: PUMPKIN }}
             >
               📋 Periodos
             </button>
@@ -460,20 +471,38 @@ export default function VacacionesPage() {
       </div>
 
       {editMode && (
-        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm rounded-md px-4 py-2">
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-md px-4 py-2">
           ✏️ Modo edición — haz clic en un día para añadir una ausencia o marcar un festivo.
         </div>
       )}
 
       {/* Leyenda de equipo */}
-      <div className="bg-white rounded-lg shadow p-4 flex flex-wrap gap-4">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-wrap gap-4">
         {trabajadoresOrdenados.map((t) => {
           const usados = usadosPorTrabajador[t.id] ?? 0
           const quedan = t.dias_anuales - usados
           return (
-            <div key={t.id} className="flex items-center gap-2">
+            <div
+              key={t.id}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full"
+              style={{ backgroundColor: `${t.color}1a` }}
+            >
               <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: t.color }} />
-              <span className="text-sm font-medium text-gray-800">{t.nombre}</span>
+              <span className="text-sm font-semibold text-gray-800">{t.nombre}</span>
+              {editMode && puedeEditar && (
+                <button
+                  title="Añadir un rango de fechas para esta persona"
+                  onClick={() => {
+                    setFormPeriodo((f) => ({ ...f, trabajador_id: t.id }))
+                    setFiltroPeriodosTrabajadorId(t.id)
+                    setPanelPeriodosAbierto(true)
+                  }}
+                  className="text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: t.color, color: '#fff' }}
+                >
+                  +
+                </button>
+              )}
               {editandoDiasId === t.id ? (
                 <span className="flex items-center gap-1">
                   <input
@@ -486,7 +515,8 @@ export default function VacacionesPage() {
                   />
                   <button
                     onClick={() => handleGuardarDiasAnuales(t.id)}
-                    className="text-xs text-blue-600 font-medium"
+                    className="text-xs font-semibold"
+                    style={{ color: DENIM }}
                   >
                     Guardar
                   </button>
@@ -496,7 +526,7 @@ export default function VacacionesPage() {
                 </span>
               ) : (
                 <span
-                  className={`text-xs text-gray-500 ${editMode && puedeEditar ? 'cursor-pointer underline decoration-dotted' : ''}`}
+                  className={`text-xs font-medium text-gray-600 ${editMode && puedeEditar ? 'cursor-pointer underline decoration-dotted' : ''}`}
                   onClick={() => {
                     if (!editMode || !puedeEditar) return
                     setEditandoDiasId(t.id)
@@ -512,17 +542,29 @@ export default function VacacionesPage() {
       </div>
 
       {/* Navegación de año */}
-      <div className="flex items-center justify-between bg-white rounded-lg shadow p-3">
-        <button onClick={irAnioAnterior} className="w-9 h-9 rounded border border-gray-300 text-gray-700 hover:bg-gray-100">
+      <div className="flex items-center justify-between bg-white rounded-xl border border-gray-200 shadow-sm p-3">
+        <button
+          onClick={irAnioAnterior}
+          className="w-9 h-9 rounded-full border font-bold transition-colors hover:bg-gray-50"
+          style={{ borderColor: '#cbd5e1', color: DENIM }}
+        >
           ←
         </button>
         <div className="flex items-center gap-3">
-          <h2 className="text-lg font-semibold text-gray-800">{anioActivo}</h2>
-          <button onClick={irHoy} className="text-xs px-2 py-1 border border-gray-300 rounded text-gray-600 hover:bg-gray-100">
+          <h2 className="text-xl font-bold" style={{ color: DENIM }}>{anioActivo}</h2>
+          <button
+            onClick={irHoy}
+            className="text-xs px-3 py-1.5 rounded-full font-semibold text-white transition-colors"
+            style={{ backgroundColor: PUMPKIN }}
+          >
             Hoy
           </button>
         </div>
-        <button onClick={irAnioSiguiente} className="w-9 h-9 rounded border border-gray-300 text-gray-700 hover:bg-gray-100">
+        <button
+          onClick={irAnioSiguiente}
+          className="w-9 h-9 rounded-full border font-bold transition-colors hover:bg-gray-50"
+          style={{ borderColor: '#cbd5e1', color: DENIM }}
+        >
           →
         </button>
       </div>
@@ -532,9 +574,9 @@ export default function VacacionesPage() {
         {Array.from({ length: 12 }, (_, mes) => {
           const nombreMes = new Date(anioActivo, mes, 1).toLocaleDateString('es-ES', { month: 'long' })
           return (
-            <div key={mes} className="bg-white rounded-lg shadow overflow-hidden">
-              <div className="px-3 py-2 border-b border-gray-100 bg-gray-50">
-                <h3 className="text-sm font-semibold text-gray-800 capitalize">{nombreMes}</h3>
+            <div key={mes} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="px-3 py-2 border-b border-gray-100" style={{ backgroundColor: '#f4f7fb' }}>
+                <h3 className="text-sm font-bold capitalize" style={{ color: DENIM }}>{nombreMes}</h3>
               </div>
               <div className="grid grid-cols-7">
                 {DIAS_SEMANA.map((d, idx) => (
@@ -562,11 +604,14 @@ export default function VacacionesPage() {
                       <button
                         key={j}
                         onClick={() => setDiaSeleccionado(k)}
-                        style={estiloFondoDia(entradas, !!festivo, esFinde)}
                         title={festivo ? festivo.nombre : undefined}
-                        className={`h-7 text-[11px] relative hover:brightness-95 transition flex items-center justify-center ${
+                        className={`h-7 text-[12px] relative hover:brightness-95 transition flex items-center justify-center ${
                           esPasado ? 'opacity-50' : ''
-                        } ${esHoy ? 'ring-1 ring-inset ring-black font-bold' : ''}`}
+                        }`}
+                        style={{
+                          ...estiloFondoDia(entradas, !!festivo, esFinde),
+                          ...(esHoy ? { boxShadow: `inset 0 0 0 2px ${DENIM}` } : {}),
+                        }}
                       >
                         {festivo && entradas.length > 0 && (
                           <span className="absolute top-0 left-0 right-0 h-1 bg-amber-500" />
@@ -574,13 +619,14 @@ export default function VacacionesPage() {
                         <span
                           className={
                             entradas.length > 0
-                              ? 'text-white drop-shadow'
+                              ? 'text-white font-bold'
                               : festivo
-                                ? 'text-amber-800 font-semibold'
+                                ? 'text-amber-900 font-bold'
                                 : esFinde
-                                  ? 'text-gray-400'
-                                  : 'text-gray-700'
+                                  ? 'text-gray-700 font-bold'
+                                  : 'text-gray-900 font-bold'
                           }
+                          style={entradas.length > 0 ? { textShadow: '0 1px 2px rgba(0,0,0,0.35)' } : undefined}
                         >
                           {d.getDate()}
                         </span>
@@ -688,7 +734,8 @@ export default function VacacionesPage() {
                     <button
                       onClick={handleAnadirADia}
                       disabled={!formAltaDia.trabajador_id}
-                      className="w-full py-1.5 bg-black text-white rounded text-sm disabled:opacity-40"
+                      className="w-full py-1.5 rounded font-semibold text-white text-sm disabled:opacity-40"
+                      style={{ backgroundColor: DENIM }}
                     >
                       Añadir
                     </button>
@@ -723,7 +770,8 @@ export default function VacacionesPage() {
                           <button
                             onClick={handleGuardarFestivo}
                             disabled={!formFestivo.nombre.trim()}
-                            className="flex-1 py-1.5 bg-black text-white rounded text-sm disabled:opacity-40"
+                            className="flex-1 py-1.5 rounded font-semibold text-white text-sm disabled:opacity-40"
+                            style={{ backgroundColor: DENIM }}
                           >
                             Guardar festivo
                           </button>
@@ -757,14 +805,20 @@ export default function VacacionesPage() {
           <div className="absolute inset-0 bg-black/30" onClick={() => setPanelPeriodosAbierto(false)} />
           <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-xl overflow-y-auto">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <h3 className="font-semibold text-lg">📋 Periodos</h3>
+              <h3 className="font-semibold text-lg" style={{ color: DENIM }}>
+                📋 Periodos
+                {filtroPeriodosTrabajadorId &&
+                  ` — ${trabajadoresPorId.get(filtroPeriodosTrabajadorId)?.nombre ?? ''}`}
+              </h3>
               <button onClick={() => setPanelPeriodosAbierto(false)} className="text-gray-400 hover:text-gray-700">
                 ✕
               </button>
             </div>
             <div className="p-5 space-y-6">
-              <div className="bg-gray-50 rounded-md p-3 space-y-2">
-                <p className="text-xs font-medium text-gray-600">Añadir periodo</p>
+              <div className="rounded-md p-3 space-y-2" style={{ backgroundColor: '#f4f7fb' }}>
+                <p className="text-xs font-semibold" style={{ color: DENIM }}>
+                  Añadir un rango de fechas de golpe (en vez de día a día)
+                </p>
                 <select
                   className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
                   value={formPeriodo.trabajador_id}
@@ -802,13 +856,28 @@ export default function VacacionesPage() {
                     </option>
                   ))}
                 </select>
-                <button onClick={handleCrearPeriodo} className="w-full py-1.5 bg-black text-white rounded text-sm">
+                <button
+                  onClick={handleCrearPeriodo}
+                  className="w-full py-1.5 rounded font-semibold text-white text-sm"
+                  style={{ backgroundColor: DENIM }}
+                >
                   Añadir periodo
                 </button>
               </div>
 
+              {filtroPeriodosTrabajadorId && (
+                <button
+                  onClick={() => setFiltroPeriodosTrabajadorId(null)}
+                  className="text-xs font-medium underline decoration-dotted"
+                  style={{ color: DENIM }}
+                >
+                  Ver periodos de todos
+                </button>
+              )}
+
               <div className="space-y-2">
                 {[...periodos]
+                  .filter((p) => !filtroPeriodosTrabajadorId || p.trabajador_id === filtroPeriodosTrabajadorId)
                   .sort((a, b) => b.fecha_inicio.localeCompare(a.fecha_inicio))
                   .map((p) => {
                     const t = trabajadoresPorId.get(p.trabajador_id)
@@ -860,7 +929,8 @@ export default function VacacionesPage() {
                           <div className="flex gap-2">
                             <button
                               onClick={() => handleGuardarEdicionPeriodo(p.id)}
-                              className="px-3 py-1.5 bg-black text-white rounded text-sm"
+                              className="px-3 py-1.5 rounded font-semibold text-white text-sm"
+                              style={{ backgroundColor: DENIM }}
                             >
                               Guardar
                             </button>

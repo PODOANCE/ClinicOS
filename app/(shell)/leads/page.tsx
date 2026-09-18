@@ -49,6 +49,9 @@ const RESULTADO_LABEL: Record<LeadsResultado, string> = {
   SEGURO: '📋 Seguro',
 }
 
+const DENIM = '#183B5F'
+const PUMPKIN = '#F18852'
+
 const CP_MAP: { prefijos?: string[]; rango?: [number, number]; municipio: string }[] = [
   { prefijos: ['28521', '28522', '28523', '28524', '28525', '28526', '28527', '28528', '28529'], municipio: 'Rivas Vaciamadrid' },
   { prefijos: ['28500', '28510', '28511', '28512', '28513', '28514', '28515', '28516', '28517', '28518', '28519'], municipio: 'Arganda del Rey' },
@@ -117,8 +120,9 @@ function OpcionBoton({
       type="button"
       onClick={onClick}
       className={`text-left px-3 py-2.5 rounded-lg border text-sm font-medium transition ${
-        seleccionado ? 'bg-black text-white border-black' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+        seleccionado ? 'text-white' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
       }`}
+      style={seleccionado ? { backgroundColor: DENIM, borderColor: DENIM } : undefined}
     >
       {children}
     </button>
@@ -323,11 +327,11 @@ export default function LeadsPage() {
   return (
     <div className="p-6 space-y-6 max-w-4xl">
       <div>
-        <h1 className="text-3xl font-bold">Leads · Llamadas</h1>
-        <p className="text-gray-600 mt-1 text-sm">{leads.length} llamada(s) registradas en total</p>
+        <h1 className="text-3xl font-bold" style={{ color: DENIM }}>Leads · Llamadas</h1>
+        <p className="text-gray-500 mt-1 text-sm">{leads.length} llamada(s) registradas en total</p>
       </div>
 
-      <div className="flex gap-2 border-b border-gray-200">
+      <div className="flex gap-2 flex-wrap">
         {(
           [
             ['form', 'Nueva llamada'],
@@ -339,9 +343,12 @@ export default function LeadsPage() {
           <button
             key={id}
             onClick={() => setTab(id)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
-              tab === id ? 'border-black text-black' : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
+            className="px-5 py-2 rounded-full text-sm font-semibold transition-colors"
+            style={
+              tab === id
+                ? { backgroundColor: DENIM, color: '#fff' }
+                : { backgroundColor: '#fff', color: '#4a5a6a', border: '1px solid #e2e8f0' }
+            }
           >
             {label}
           </button>
@@ -349,7 +356,7 @@ export default function LeadsPage() {
       </div>
 
       {tab === 'form' && (
-        <div className="bg-white rounded-lg shadow p-5 space-y-5">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Servicio de interés</label>
             <div className="grid grid-cols-2 gap-2">
@@ -399,9 +406,10 @@ export default function LeadsPage() {
                   }
                   className={`px-3 py-3 rounded-lg border text-sm font-medium flex items-center gap-2 ${
                     form.resultado === r.valor
-                      ? 'bg-black text-white border-black'
+                      ? 'text-white'
                       : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                   } ${r.valor === 'SEGURO' ? 'col-span-2' : ''}`}
+                  style={form.resultado === r.valor ? { backgroundColor: DENIM, borderColor: DENIM } : undefined}
                 >
                   <span>{r.icono}</span>
                   {r.label}
@@ -514,13 +522,14 @@ export default function LeadsPage() {
               value={form.cp}
               onChange={(e) => setForm((f) => ({ ...f, cp: e.target.value.replace(/\D/g, '').slice(0, 5) }))}
             />
-            {municipioCp && <div className="mt-1 text-sm font-medium text-orange-600">📍 {municipioCp}</div>}
+            {municipioCp && <div className="mt-1 text-sm font-medium" style={{ color: PUMPKIN }}>📍 {municipioCp}</div>}
           </div>
 
           <button
             onClick={handleEnviar}
             disabled={!puedeEnviar || enviando}
-            className="w-full py-3 bg-black text-white rounded-lg font-medium disabled:opacity-40"
+            className="w-full py-3 rounded-full font-semibold text-sm text-white disabled:opacity-40 transition-colors"
+            style={{ backgroundColor: DENIM }}
           >
             {enviando ? 'Guardando...' : 'Registrar llamada'}
           </button>
@@ -534,9 +543,12 @@ export default function LeadsPage() {
               <button
                 key={f}
                 onClick={() => setFiltroPeriodo(f)}
-                className={`px-3 py-1.5 rounded-full text-sm border ${
-                  filtroPeriodo === f ? 'bg-black text-white border-black' : 'bg-white text-gray-600 border-gray-300'
-                }`}
+                className="px-3 py-1.5 rounded-full text-sm font-medium transition-colors"
+                style={
+                  filtroPeriodo === f
+                    ? { backgroundColor: DENIM, color: '#fff' }
+                    : { backgroundColor: '#fff', color: '#4a5a6a', border: '1px solid #e2e8f0' }
+                }
               >
                 {{ mes: 'Este mes', semana: 'Esta semana', dia: 'Hoy', rango: 'Fechas', todo: 'Todo' }[f]}
               </button>
@@ -551,26 +563,26 @@ export default function LeadsPage() {
           )}
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="bg-white rounded-lg shadow p-4 text-center">
-              <div className="text-3xl font-bold">{kpis.total}</div>
-              <div className="text-xs text-gray-500 uppercase mt-1">Llamadas totales</div>
+            <div className="rounded-xl border border-gray-200 bg-white shadow-sm px-4 py-3">
+              <div className="text-2xl font-bold" style={{ color: DENIM }}>{kpis.total}</div>
+              <div className="text-xs text-gray-500 font-medium mt-0.5">Llamadas totales</div>
             </div>
-            <div className="bg-white rounded-lg shadow p-4 text-center">
-              <div className="text-3xl font-bold">{kpis.conversion}%</div>
-              <div className="text-xs text-gray-500 uppercase mt-1">Tasa de conversión</div>
+            <div className="rounded-xl border border-gray-200 bg-white shadow-sm px-4 py-3">
+              <div className="text-2xl font-bold" style={{ color: DENIM }}>{kpis.conversion}%</div>
+              <div className="text-xs text-gray-500 font-medium mt-0.5">Tasa de conversión</div>
             </div>
-            <div className="bg-white rounded-lg shadow p-4 text-center">
-              <div className="text-3xl font-bold">{kpis.totalCitas}</div>
-              <div className="text-xs text-gray-500 uppercase mt-1">Citas conseguidas</div>
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+              <div className="text-2xl font-bold text-emerald-700">{kpis.totalCitas}</div>
+              <div className="text-xs text-emerald-700 font-medium mt-0.5">Citas conseguidas</div>
             </div>
-            <div className="bg-white rounded-lg shadow p-4 text-center">
-              <div className="text-3xl font-bold">{kpis.no + kpis.noConocido}</div>
-              <div className="text-xs text-gray-500 uppercase mt-1">Llamadas perdidas</div>
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+              <div className="text-2xl font-bold text-red-700">{kpis.no + kpis.noConocido}</div>
+              <div className="text-xs text-red-700 font-medium mt-0.5">Llamadas perdidas</div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-5">
-            <h3 className="font-semibold mb-4">Conversión de llamadas</h3>
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <h3 className="font-semibold mb-4" style={{ color: DENIM }}>Conversión de llamadas</h3>
             <div className="flex items-center gap-6 flex-wrap">
               <div className="w-32 h-32 rounded-full flex-shrink-0" style={{ background: ringGradient }} />
               <div className="space-y-1 text-sm">
@@ -589,8 +601,8 @@ export default function LeadsPage() {
             ['Motivos de no conversión', barrasMotivo],
             ['Procedencia geográfica', barrasLocalidad],
           ].map(([titulo, barras]) => (
-            <div key={titulo as string} className="bg-white rounded-lg shadow p-5">
-              <h3 className="font-semibold mb-3">{titulo as string}</h3>
+            <div key={titulo as string} className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+              <h3 className="font-semibold mb-3" style={{ color: DENIM }}>{titulo as string}</h3>
               {(barras as [string, number][]).length === 0 ? (
                 <p className="text-sm text-gray-400 text-center py-2">Sin datos</p>
               ) : (
@@ -600,8 +612,11 @@ export default function LeadsPage() {
                     return (
                       <div key={key} className="flex items-center gap-3 text-sm">
                         <div className="w-40 truncate text-gray-600">{key}</div>
-                        <div className="flex-1 bg-gray-100 rounded h-2.5 overflow-hidden">
-                          <div className="h-full bg-blue-500" style={{ width: `${Math.round((val / max) * 100)}%` }} />
+                        <div className="flex-1 bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                          <div
+                            className="h-full rounded-full"
+                            style={{ width: `${Math.round((val / max) * 100)}%`, backgroundColor: DENIM }}
+                          />
                         </div>
                         <div className="w-6 text-right font-medium">{val}</div>
                       </div>
@@ -615,7 +630,7 @@ export default function LeadsPage() {
       )}
 
       {tab === 'seguimiento' && (
-        <div className="bg-white rounded-lg shadow divide-y divide-gray-100">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm divide-y divide-gray-100">
           {seguimiento.length === 0 ? (
             <div className="p-10 text-center text-gray-400">No hay leads pendientes de seguimiento.</div>
           ) : (
@@ -642,9 +657,12 @@ export default function LeadsPage() {
                 <button
                   key={val}
                   onClick={() => setFiltroRegistros(val as any)}
-                  className={`px-3 py-1.5 rounded-full text-sm border ${
-                    filtroRegistros === val ? 'bg-black text-white border-black' : 'bg-white text-gray-600 border-gray-300'
-                  }`}
+                  className="px-3 py-1.5 rounded-full text-sm font-medium transition-colors"
+                  style={
+                    filtroRegistros === val
+                      ? { backgroundColor: DENIM, color: '#fff' }
+                      : { backgroundColor: '#fff', color: '#4a5a6a', border: '1px solid #e2e8f0' }
+                  }
                 >
                   {label}
                 </button>
@@ -652,7 +670,7 @@ export default function LeadsPage() {
             )}
           </div>
           <div className="text-sm text-gray-500">{registrosFiltrados.length} registro(s)</div>
-          <div className="bg-white rounded-lg shadow divide-y divide-gray-100">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm divide-y divide-gray-100">
             {registrosFiltrados.length === 0 ? (
               <div className="p-10 text-center text-gray-400">Sin registros.</div>
             ) : (

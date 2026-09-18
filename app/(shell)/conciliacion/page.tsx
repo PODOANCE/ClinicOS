@@ -16,9 +16,19 @@ import type { Rol } from '@/lib/types/models'
 // Mismo umbral que PARAMS.UMBRAL_VERDE en lib/services/conciliacion.ts —
 // si se ajusta allí, ajustar también aquí.
 const UMBRAL_VERDE = 80
+const UMBRAL_AMBAR = 50
+
+const DENIM = '#183B5F'
+const PUMPKIN = '#F18852'
 
 function esVerde(p: PropuestaConciliacion): boolean {
   return p.confianza >= UMBRAL_VERDE && p.diferencia === 0
+}
+
+function badgeConfianza(confianza: number): { label: string; className: string } {
+  if (confianza >= UMBRAL_VERDE) return { label: `Alta confianza (${confianza})`, className: 'bg-emerald-100 text-emerald-800' }
+  if (confianza >= UMBRAL_AMBAR) return { label: `Confianza media (${confianza})`, className: 'bg-amber-100 text-amber-800' }
+  return { label: `Confianza baja (${confianza})`, className: 'bg-red-100 text-red-800' }
 }
 
 export default function ConciliacionPage() {
@@ -166,20 +176,21 @@ export default function ConciliacionPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-3xl font-bold">Conciliación</h1>
-          <p className="text-gray-600 mt-1 text-sm">{propuestas.length} propuesta(s) por revisar</p>
+          <h1 className="text-3xl font-bold" style={{ color: DENIM }}>Conciliación</h1>
+          <p className="text-gray-500 mt-1 text-sm">{propuestas.length} propuesta(s) por revisar</p>
         </div>
         <button
           onClick={handleEjecutar}
           disabled={ejecutando}
-          className="px-4 py-2 rounded-md text-sm font-medium bg-black text-white disabled:opacity-40"
+          className="px-4 py-2 rounded-full text-sm font-semibold transition-colors disabled:opacity-40"
+          style={{ backgroundColor: DENIM, color: '#fff' }}
         >
           {ejecutando ? 'Ejecutando...' : '⚙️ Ejecutar conciliación'}
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-4 flex items-center gap-3 flex-wrap">
-        <span className="text-sm font-medium text-gray-700">📄 Importar movimientos bancarios (.xlsx)</span>
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-3 flex-wrap">
+        <span className="text-sm font-semibold" style={{ color: PUMPKIN }}>📄 Importar movimientos bancarios (.xlsx)</span>
         <input
           ref={inputArchivoRef}
           type="file"
@@ -216,18 +227,19 @@ export default function ConciliacionPage() {
       )}
 
       {propuestas.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-10 text-center text-gray-400">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-10 text-center text-gray-400">
           No hay propuestas pendientes de revisar.
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow divide-y divide-gray-100">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm divide-y divide-gray-100">
           {propuestas.map((p) => {
             const verde = esVerde(p)
             const procesando = procesandoId === p.id
+            const badge = badgeConfianza(p.confianza)
             return (
               <div key={p.id} className="p-4 flex flex-col md:flex-row md:items-center gap-4">
                 <span
-                  className={`w-3 h-3 rounded-full flex-shrink-0 ${verde ? 'bg-green-500' : 'bg-yellow-500'}`}
+                  className={`w-3 h-3 rounded-full flex-shrink-0 ${verde ? 'bg-emerald-500' : 'bg-amber-500'}`}
                   title={verde ? 'Alta confianza' : 'Revisar con atención'}
                 />
                 <div className="flex-1 min-w-0 grid md:grid-cols-2 gap-2">
@@ -247,19 +259,33 @@ export default function ConciliacionPage() {
                     </div>
                   </div>
                 </div>
-                <div className="md:w-64 text-xs text-gray-500">{p.notas_revision}</div>
+                <div className="md:w-64 space-y-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.className}`}>
+                      {badge.label}
+                    </span>
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                        p.diferencia === 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                      }`}
+                    >
+                      {p.diferencia === 0 ? 'Importe exacto' : `Dif. ${p.diferencia.toFixed(2)} €`}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500">{p.notas_revision}</div>
+                </div>
                 <div className="flex gap-2 flex-shrink-0">
                   <button
                     onClick={() => handleAceptar(p.id)}
                     disabled={procesando}
-                    className="px-3 py-1.5 bg-green-600 text-white rounded text-sm disabled:opacity-40"
+                    className="px-3 py-1.5 bg-emerald-600 text-white rounded-full text-sm font-semibold disabled:opacity-40"
                   >
                     Aceptar
                   </button>
                   <button
                     onClick={() => handleRechazar(p.id)}
                     disabled={procesando}
-                    className="px-3 py-1.5 border border-gray-300 rounded text-sm text-red-600 disabled:opacity-40"
+                    className="px-3 py-1.5 border border-gray-300 rounded-full text-sm font-semibold text-red-600 disabled:opacity-40"
                   >
                     Rechazar
                   </button>
