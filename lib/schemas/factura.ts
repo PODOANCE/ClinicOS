@@ -70,17 +70,17 @@ export const ActualizarFacturaSchema = z
     fecha_vencimiento: fechaISO.nullable().optional(),
 
     importe_base: z
-      .number('importe_base debe ser número')
+      .number({ message: 'importe_base debe ser número' })
       .nonnegative('importe_base no puede ser negativo')
       .optional(),
 
     importe_iva: z
-      .number('importe_iva debe ser número')
+      .number({ message: 'importe_iva debe ser número' })
       .nonnegative('importe_iva no puede ser negativo')
       .optional(),
 
     importe_total: z
-      .number('importe_total debe ser número')
+      .number({ message: 'importe_total debe ser número' })
       .positive('importe_total debe ser positivo')
       .optional(),
 
