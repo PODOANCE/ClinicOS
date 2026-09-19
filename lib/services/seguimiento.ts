@@ -46,6 +46,7 @@ export interface PacienteSeguimiento {
   cita_futura_manual: boolean
   cita_futura_fecha: string | null
   gestion_recontacto: SeguimientoGestionEstado
+  gestion_actualizada_en: string | null
   proximo_intento: string | null
   notas: string | null
 }
@@ -187,6 +188,7 @@ export function calcularSeguimiento(
       cita_futura_manual: gestion?.cita_futura_manual ?? false,
       cita_futura_fecha: gestion?.cita_futura_fecha ?? null,
       gestion_recontacto: gestion?.gestion_recontacto ?? 'PENDIENTE',
+      gestion_actualizada_en: gestion?.updated_at ?? null,
       proximo_intento: gestion?.proximo_intento ?? null,
       notas: gestion?.notas ?? null,
     })

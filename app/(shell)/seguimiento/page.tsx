@@ -30,11 +30,17 @@ const PUMPKIN = '#F18852'
 
 const GESTION_LABEL: Record<SeguimientoGestionEstado, string> = {
   PENDIENTE: 'Pendiente',
-  LLAMADO_NO_CONTESTA: 'Llamado - no contesta',
+  LLAMADO_NO_CONTESTA: 'Llamada - no contesta',
+  CANCELA_TODO_OK: 'Llamada - cancela la revisión (todo ok)',
+  RECHAZA: 'Llamada - rechaza la revisión',
   CITA_AGENDADA: 'Cita agendada',
-  RECHAZA: 'Rechaza',
   VOLVER_A_LLAMAR: 'Volver a llamar',
 }
+
+// Precio real de una revisión (mismo que en el Excel/Panel de Control):
+// cada vez que se marca "Cita agendada" es una revisión que hemos
+// recuperado en vez de perderla.
+const PRECIO_REVISION = 45
 
 type FiltroEstado = 'TODOS' | 'SIN_CITA' | 'CITADA'
 type FiltroPrioridad = 'TODAS' | 'SIN_REVISION' | 'VENCIDA' | 'AL_DIA'
@@ -169,6 +175,7 @@ export default function SeguimientoPage() {
   const [generandoRecontacto, setGenerandoRecontacto] = useState(false)
   const [mensajesRecontacto, setMensajesRecontacto] = useState<{ paciente: string; telefono: string | null; mensaje: string; enlace: string | null }[] | null>(null)
   const [copiadoRecontacto, setCopiadoRecontacto] = useState<string | null>(null)
+  const [celebracion, setCelebracion] = useState<{ id: number; mensaje: string } | null>(null)
 
   useEffect(() => {
     if (user) cargar()
@@ -209,6 +216,17 @@ export default function SeguimientoPage() {
   const pacientes = useMemo(() => calcularSeguimiento(citas, gestiones), [citas, gestiones])
   const resumen = useMemo(() => calcularResumen(pacientes), [pacientes])
   const resumenPodologo = useMemo(() => calcularResumenPorPodologo(pacientes), [pacientes])
+
+  // Revisiones reagendadas este mes (estado actual "Cita agendada",
+  // marcado dentro del mes en curso) — cada una son 45€ que no se perdían.
+  const reagendadasEsteMes = useMemo(() => {
+    const hoy = new Date()
+    return pacientes.filter((p) => {
+      if (p.gestion_recontacto !== 'CITA_AGENDADA' || !p.gestion_actualizada_en) return false
+      const f = new Date(p.gestion_actualizada_en)
+      return f.getFullYear() === hoy.getFullYear() && f.getMonth() === hoy.getMonth()
+    }).length
+  }, [pacientes])
 
   const podologos = useMemo(() => {
     const set = new Set(pacientes.map((p) => p.podologo_estudio).filter((v): v is string => !!v))
@@ -266,6 +284,17 @@ export default function SeguimientoPage() {
             : `${p.nombre_mostrar}: fecha borrada → vuelve a "Sin cita - recontactar".`
         )
         setTimeout(() => setAviso(null), 6000)
+      }
+      if (campos.gestionRecontacto === 'CITA_AGENDADA' && p.gestion_recontacto !== 'CITA_AGENDADA') {
+        const totalMes = (reagendadasEsteMes + 1) * PRECIO_REVISION
+        const idCelebracion = Date.now()
+        setCelebracion({
+          id: idCelebracion,
+          mensaje: `+${PRECIO_REVISION}€ · ${p.nombre_mostrar} reagendada. Llevamos ${totalMes}€ este mes. ¡BIEN HECHO! 🎉`,
+        })
+        setTimeout(() => {
+          setCelebracion((actual) => (actual?.id === idCelebracion ? null : actual))
+        }, 4000)
       }
       await cargar()
     } catch (err) {
@@ -397,7 +426,7 @@ export default function SeguimientoPage() {
       </div>
 
       {/* KPI */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <div className="rounded-xl border border-gray-200 bg-white shadow-sm px-4 py-3">
           <div className="text-2xl font-bold" style={{ color: DENIM }}>{resumen.total}</div>
           <div className="text-xs text-gray-500 font-medium mt-0.5">Pacientes</div>
@@ -418,7 +447,21 @@ export default function SeguimientoPage() {
           <div className="text-2xl font-bold" style={{ color: PUMPKIN }}>{resumen.con_plantillas_pendientes}</div>
           <div className="text-xs font-medium mt-0.5" style={{ color: PUMPKIN }}>🦶 Con plantillas, sin cita</div>
         </div>
+        <div className="rounded-xl border-2 px-4 py-3" style={{ borderColor: '#16a34a', backgroundColor: '#f0fdf4' }}>
+          <div className="text-2xl font-bold text-green-700">{reagendadasEsteMes * PRECIO_REVISION}€</div>
+          <div className="text-xs font-medium mt-0.5 text-green-700">💶 Recuperado este mes ({reagendadasEsteMes})</div>
+        </div>
       </div>
+
+      {celebracion && (
+        <div
+          key={celebracion.id}
+          className="celebracion-toast fixed top-16 left-1/2 z-[60] px-5 py-3 rounded-full shadow-lg text-white font-bold text-sm whitespace-nowrap"
+          style={{ backgroundColor: '#16a34a' }}
+        >
+          {celebracion.mensaje}
+        </div>
+      )}
 
       {aviso && (
         <div className="bg-blue-50 border border-blue-200 text-blue-800 text-sm rounded-md px-4 py-2 flex items-center justify-between gap-3">

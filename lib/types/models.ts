@@ -291,8 +291,9 @@ export interface SeguimientoCita {
 export type SeguimientoGestionEstado =
   | 'PENDIENTE'
   | 'LLAMADO_NO_CONTESTA'
-  | 'CITA_AGENDADA'
+  | 'CANCELA_TODO_OK'
   | 'RECHAZA'
+  | 'CITA_AGENDADA'
   | 'VOLVER_A_LLAMAR';
 
 // Seguimiento de revisiones: una fila por paciente con lo único que el
