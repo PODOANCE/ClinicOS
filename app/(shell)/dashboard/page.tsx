@@ -13,6 +13,42 @@ const DENIM = '#183B5F'
 const PUMPKIN = '#F18852'
 const MAX_ITEMS_PREVIEW = 3
 
+const FRASES_MOTIVACIONALES = [
+  'Hoy es un buen día para cuidar pies y sonreír.',
+  'Paso a paso se hace el camino.',
+  'Un buen equipo hace fáciles los días difíciles.',
+  'Cada paciente que ayudamos hoy es un paso adelante.',
+  'La constancia es la que hace crecer la clínica.',
+  'Pequeños gestos, grandes cambios en cada visita.',
+  'Hoy toca dar lo mejor de nosotros, como siempre.',
+  'El buen trato se nota, y aquí se nota mucho.',
+  'Cuidar de los demás empieza por cuidarnos entre nosotros.',
+  'Cada día es una oportunidad para mejorar un poquito más.',
+  'La sonrisa de un paciente contento no tiene precio.',
+  'Somos un equipo que suma, no que resta.',
+  'Hoy es buen día para hacer las cosas con calma y cariño.',
+  'Lo que se hace con cuidado, se nota.',
+  'Gracias por el trabajo de cada día, aunque no siempre se vea.',
+  'Un pequeño detalle puede hacer el día de alguien.',
+  'La paciencia y las ganas mueven esta clínica hacia adelante.',
+  'Hoy también toca celebrar los pequeños logros.',
+  'El buen humor también se receta.',
+  'Entre todos, un poco más fácil.',
+]
+
+function fraseDelDia(): string {
+  const hoy = new Date()
+  const inicioAnio = new Date(hoy.getFullYear(), 0, 0)
+  const diaDelAnio = Math.floor((hoy.getTime() - inicioAnio.getTime()) / 86400000)
+  return FRASES_MOTIVACIONALES[diaDelAnio % FRASES_MOTIVACIONALES.length]
+}
+
+function fechaHoraFormateada(fecha: Date): { fecha: string; hora: string } {
+  const fechaTexto = fecha.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  const horaTexto = fecha.toLocaleTimeString('es-ES')
+  return { fecha: fechaTexto.charAt(0).toUpperCase() + fechaTexto.slice(1), hora: horaTexto }
+}
+
 // Nombres como "Andrés y Celia" (cuentas compartidas por varias personas) ya
 // vienen listos para el saludo; los nombres completos de una sola persona
 // ("Belén Iglesias Arias") se recortan al nombre de pila.
@@ -76,12 +112,19 @@ export default function DashboardPage() {
   const [tareas, setTareas] = useState<Tarea[]>([])
   const [facturasPendientes, setFacturasPendientes] = useState<FacturaPendiente[]>([])
   const [cargandoResumen, setCargandoResumen] = useState(true)
+  const [ahora, setAhora] = useState<Date | null>(null)
 
   useEffect(() => {
     if (!user) return
     cargarResumen()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
+
+  useEffect(() => {
+    setAhora(new Date())
+    const id = setInterval(() => setAhora(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
 
   async function cargarResumen() {
     if (!user) return
@@ -127,11 +170,23 @@ export default function DashboardPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold" style={{ color: DENIM }}>
-          ¡Hola{nombreSaludo ? `, ${nombreSaludo}` : ''}! 👋
-        </h1>
-        <p className="text-gray-500 mt-1 text-sm">Bienvenido de nuevo a ClinicOS</p>
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-3xl font-bold" style={{ color: DENIM }}>
+            ¡Hola{nombreSaludo ? `, ${nombreSaludo}` : ''}! 👋
+          </h1>
+          <p className="text-gray-500 mt-1 text-sm">Bienvenido de nuevo a ClinicOS · {fraseDelDia()}</p>
+        </div>
+        {ahora && (
+          <div className="text-right flex-shrink-0">
+            <div className="text-sm font-semibold" style={{ color: DENIM }}>
+              {fechaHoraFormateada(ahora).fecha}
+            </div>
+            <div className="text-2xl font-bold tabular-nums" style={{ color: PUMPKIN }}>
+              {fechaHoraFormateada(ahora).hora}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
