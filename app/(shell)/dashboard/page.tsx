@@ -5,9 +5,9 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/browser'
 import { useUser } from '@/lib/contexts/UserContext'
 import { getTasks, getNombreUsuario } from '@/lib/supabase/queries/tasks'
-import { getRolesUsuarioActual } from '@/lib/supabase/queries/stock'
+import { getRolesUsuarioActual, getStockProductos } from '@/lib/supabase/queries/stock'
 import { canUserAccess } from '@/lib/permissions/validation'
-import type { Tarea } from '@/lib/types/models'
+import type { Tarea, StockProducto } from '@/lib/types/models'
 
 const DENIM = '#183B5F'
 const PUMPKIN = '#F18852'
@@ -109,8 +109,10 @@ export default function DashboardPage() {
 
   const [nombreSaludo, setNombreSaludo] = useState<string | null>(null)
   const [puedeVerFacturas, setPuedeVerFacturas] = useState(false)
+  const [puedeVerStock, setPuedeVerStock] = useState(false)
   const [tareas, setTareas] = useState<Tarea[]>([])
   const [facturasPendientes, setFacturasPendientes] = useState<FacturaPendiente[]>([])
+  const [materialesPorPedir, setMaterialesPorPedir] = useState<StockProducto[]>([])
   const [cargandoResumen, setCargandoResumen] = useState(true)
   const [ahora, setAhora] = useState<Date | null>(null)
 
@@ -136,9 +138,16 @@ export default function DashboardPage() {
       const roles = await getRolesUsuarioActual(user.id)
       const tienePermisoFacturas = canUserAccess(roles, 'Facturas', 'editar')
       setPuedeVerFacturas(tienePermisoFacturas)
+      const tienePermisoStock = canUserAccess(roles, 'Stock', 'ver')
+      setPuedeVerStock(tienePermisoStock)
 
       const tareasAbiertas = await getTasks(user.id)
       setTareas(tareasAbiertas)
+
+      if (tienePermisoStock) {
+        const productos = await getStockProductos()
+        setMaterialesPorPedir(productos.filter((p) => p.stock_actual <= p.stock_minimo))
+      }
 
       if (tienePermisoFacturas) {
         const supabase = createClient() as any
@@ -189,7 +198,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl">
         <TarjetaResumen href="/hoy" titulo="📋 Tareas pendientes" cantidad={tareas.length} cargando={cargandoResumen}>
           {cargandoResumen ? (
             'Cargando…'
@@ -226,6 +235,32 @@ export default function DashboardPage() {
                 ))}
                 {facturasPendientes.length > MAX_ITEMS_PREVIEW && (
                   <li>+ {facturasPendientes.length - MAX_ITEMS_PREVIEW} más</li>
+                )}
+              </ul>
+            )}
+          </TarjetaResumen>
+        )}
+
+        {puedeVerStock && (
+          <TarjetaResumen
+            href="/stock"
+            titulo="📝 Lista de la compra"
+            cantidad={materialesPorPedir.length}
+            cargando={cargandoResumen}
+          >
+            {cargandoResumen ? (
+              'Cargando…'
+            ) : materialesPorPedir.length === 0 ? (
+              'Stock al día ✅'
+            ) : (
+              <ul className="space-y-0.5">
+                {materialesPorPedir.slice(0, MAX_ITEMS_PREVIEW).map((p) => (
+                  <li key={p.id} className="truncate">
+                    · {p.nombre} ({p.stock_actual} {p.unidad})
+                  </li>
+                ))}
+                {materialesPorPedir.length > MAX_ITEMS_PREVIEW && (
+                  <li>+ {materialesPorPedir.length - MAX_ITEMS_PREVIEW} más</li>
                 )}
               </ul>
             )}
