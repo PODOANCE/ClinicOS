@@ -37,6 +37,7 @@ export function Navigation() {
     ...(puedeVerConciliacion ? [{ nombre: 'Conciliación', href: '/conciliacion' }] : []),
     ...(puedeVerLeads ? [{ nombre: 'Leads', href: '/leads' }] : []),
     ...(puedeVerSeguimiento ? [{ nombre: 'Seguimiento', href: '/seguimiento' }] : []),
+    ...(puedeVerSeguimiento ? [{ nombre: 'Recordatorios', href: '/recordatorios' }] : []),
     ...(puedeVerPanel ? [{ nombre: 'Panel de Control', href: '/panel' }] : []),
   ]
 

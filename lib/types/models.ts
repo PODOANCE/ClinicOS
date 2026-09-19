@@ -313,3 +313,32 @@ export interface SeguimientoGestion {
   updated_at: string;
   updated_by: string;
 }
+
+// Recordatorios por WhatsApp: plantilla editable por el personal (envío
+// manual, sin API de pago). CITA_MANANA usa {nombre} {fecha} {hora}
+// {profesional} (ver lib/services/recordatorios-generador.ts); RECONTACTO
+// (pacientes de Seguimiento sin cita futura) usa solo {nombre}.
+export type RecordatorioTipo = 'CITA_MANANA' | 'RECONTACTO';
+
+export interface RecordatorioPlantilla {
+  centro_id: string;
+  tipo: RecordatorioTipo;
+  texto: string;
+  updated_at: string;
+  updated_by: string;
+}
+
+// Teléfono de paciente (importado de vez en cuando desde el listado de
+// pacientes de Organízate), usado por Recordatorios para generar enlaces
+// directos de WhatsApp. paciente_clave = nombre completo normalizado.
+export interface PacienteTelefono {
+  id: string;
+  paciente_clave: string;
+  nombre_mostrar: string;
+  telefono: string;
+  centro_id: string;
+  created_at: string;
+  created_by: string;
+  updated_at: string;
+  updated_by: string;
+}

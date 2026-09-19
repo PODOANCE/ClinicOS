@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/browser'
 import { getUserCentro } from '@/lib/supabase/queries/tasks'
 import { getSeguimientoCitas, getSeguimientoGestion, actualizarGestion } from '@/lib/supabase/queries/seguimiento'
 import { getRolesUsuarioActual } from '@/lib/supabase/queries/stock'
+import { getRecordatoriosPlantilla, actualizarRecordatoriosPlantilla } from '@/lib/supabase/queries/recordatorios'
+import { getTelefonosPorClaves } from '@/lib/supabase/queries/pacientes-telefono'
 import { canUserAccess } from '@/lib/permissions/validation'
 import {
   calcularSeguimiento,
@@ -14,6 +16,14 @@ import {
   type PacienteSeguimiento,
 } from '@/lib/services/seguimiento'
 import type { SeguimientoCita, SeguimientoGestion, SeguimientoGestionEstado, Rol } from '@/lib/types/models'
+
+// Mismo criterio que wa.me: sin "+" ni espacios, con prefijo de país (se
+// asume España si el número guardado no trae ya uno).
+function enlaceWhatsapp(telefono: string, mensaje: string): string {
+  const digitos = telefono.replace(/[^\d]/g, '')
+  const conPrefijo = digitos.length === 9 ? `34${digitos}` : digitos
+  return `https://wa.me/${conPrefijo}?text=${encodeURIComponent(mensaje)}`
+}
 
 const DENIM = '#183B5F'
 const PUMPKIN = '#F18852'
@@ -72,6 +82,14 @@ export default function SeguimientoPage() {
   const [resultadoImport, setResultadoImport] = useState<string | null>(null)
   const inputArchivoRef = useRef<HTMLInputElement>(null)
 
+  const [plantillaRecontacto, setPlantillaRecontacto] = useState('')
+  const [guardandoPlantilla, setGuardandoPlantilla] = useState(false)
+  const [avisoPlantilla, setAvisoPlantilla] = useState<string | null>(null)
+  const [mostrarRecontacto, setMostrarRecontacto] = useState(false)
+  const [generandoRecontacto, setGenerandoRecontacto] = useState(false)
+  const [mensajesRecontacto, setMensajesRecontacto] = useState<{ paciente: string; telefono: string | null; mensaje: string; enlace: string | null }[] | null>(null)
+  const [copiadoRecontacto, setCopiadoRecontacto] = useState<string | null>(null)
+
   useEffect(() => {
     if (user) cargar()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -91,6 +109,10 @@ export default function SeguimientoPage() {
       setGestiones(g)
       setCentroId(ce)
       setRoles(rls)
+      if (ce) {
+        const p = await getRecordatoriosPlantilla(ce, 'RECONTACTO')
+        setPlantillaRecontacto(p?.texto ?? '')
+      }
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error cargando el seguimiento')
@@ -208,6 +230,54 @@ export default function SeguimientoPage() {
     } finally {
       setImportando(false)
       if (inputArchivoRef.current) inputArchivoRef.current.value = ''
+    }
+  }
+
+  async function handleGuardarPlantillaRecontacto() {
+    if (!user || !centroId) return
+    setGuardandoPlantilla(true)
+    try {
+      await actualizarRecordatoriosPlantilla({ centroId, tipo: 'RECONTACTO', texto: plantillaRecontacto, actorId: user.id })
+      setAvisoPlantilla('Plantilla guardada.')
+      setTimeout(() => setAvisoPlantilla(null), 3000)
+    } catch (err) {
+      setAvisoPlantilla(err instanceof Error ? err.message : 'Error guardando la plantilla')
+    } finally {
+      setGuardandoPlantilla(false)
+    }
+  }
+
+  async function handleGenerarRecontacto() {
+    setGenerandoRecontacto(true)
+    setMensajesRecontacto(null)
+    try {
+      const claves = pacientesFiltrados.map((p) => p.paciente_clave)
+      const telefonos = await getTelefonosPorClaves(claves)
+      const mensajes = pacientesFiltrados.map((p) => {
+        const mensaje = plantillaRecontacto.replace(/\{nombre\}/g, p.nombre_mostrar)
+        const telefono = telefonos.get(p.paciente_clave) ?? null
+        return {
+          paciente: p.nombre_mostrar,
+          telefono,
+          mensaje,
+          enlace: telefono ? enlaceWhatsapp(telefono, mensaje) : null,
+        }
+      })
+      setMensajesRecontacto(mensajes)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error generando los mensajes')
+    } finally {
+      setGenerandoRecontacto(false)
+    }
+  }
+
+  async function copiarMensajeRecontacto(clave: string, texto: string) {
+    try {
+      await navigator.clipboard.writeText(texto)
+      setCopiadoRecontacto(clave)
+      setTimeout(() => setCopiadoRecontacto(null), 2000)
+    } catch {
+      alert('No se pudo copiar. Selecciona el texto a mano.')
     }
   }
 
@@ -353,13 +423,94 @@ export default function SeguimientoPage() {
         />
 
         <button
-          onClick={() => setMostrarResumen((v) => !v)}
+          onClick={() => setMostrarRecontacto((v) => !v)}
           className="text-xs font-medium underline decoration-dotted ml-auto"
+          style={{ color: PUMPKIN }}
+        >
+          {mostrarRecontacto ? 'Ocultar recontacto por WhatsApp' : '💬 Recontactar por WhatsApp'}
+        </button>
+        <button
+          onClick={() => setMostrarResumen((v) => !v)}
+          className="text-xs font-medium underline decoration-dotted"
           style={{ color: DENIM }}
         >
           {mostrarResumen ? 'Ocultar resumen por podólogo' : 'Ver resumen por podólogo'}
         </button>
       </div>
+
+      {mostrarRecontacto && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-3">
+          <h3 className="text-sm font-bold" style={{ color: DENIM }}>Recontactar por WhatsApp</h3>
+          <p className="text-xs text-gray-500">
+            Genera un mensaje por cada paciente de la lista de abajo (respeta los filtros y el orden que tengas puestos
+            ahora mismo — {pacientesFiltrados.length} paciente{pacientesFiltrados.length === 1 ? '' : 's'}). Usa{' '}
+            <code className="bg-gray-100 px-1 rounded">{'{nombre}'}</code> en la plantilla donde quieras el nombre.
+          </p>
+          <textarea
+            value={plantillaRecontacto}
+            onChange={(e) => setPlantillaRecontacto(e.target.value)}
+            disabled={!puedeEditar}
+            rows={3}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          />
+          <div className="flex items-center gap-3 flex-wrap">
+            {puedeEditar && (
+              <button
+                onClick={handleGuardarPlantillaRecontacto}
+                disabled={guardandoPlantilla}
+                className="px-4 py-1.5 rounded-full text-sm font-semibold text-white disabled:opacity-50"
+                style={{ backgroundColor: DENIM }}
+              >
+                {guardandoPlantilla ? 'Guardando…' : 'Guardar plantilla'}
+              </button>
+            )}
+            <button
+              onClick={handleGenerarRecontacto}
+              disabled={generandoRecontacto || pacientesFiltrados.length === 0}
+              className="px-4 py-1.5 rounded-full text-sm font-semibold text-white disabled:opacity-50"
+              style={{ backgroundColor: PUMPKIN }}
+            >
+              {generandoRecontacto ? 'Generando…' : `Generar ${pacientesFiltrados.length} mensajes`}
+            </button>
+            {avisoPlantilla && <span className="text-xs text-gray-500">{avisoPlantilla}</span>}
+          </div>
+
+          {mensajesRecontacto && (
+            <div className="border border-gray-100 rounded-lg divide-y divide-gray-100 max-h-96 overflow-y-auto">
+              {mensajesRecontacto.map((m, i) => {
+                const clave = `${m.paciente}-${i}`
+                return (
+                  <div key={clave} className="px-3 py-2 flex flex-col sm:flex-row sm:items-center gap-2">
+                    <div className="sm:w-40 flex-shrink-0 font-medium text-gray-900 text-sm">{m.paciente}</div>
+                    <div className="flex-1 text-xs text-gray-600">{m.mensaje}</div>
+                    <div className="flex-shrink-0 flex gap-2">
+                      <button
+                        onClick={() => copiarMensajeRecontacto(clave, m.mensaje)}
+                        className="text-xs px-3 py-1 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50"
+                      >
+                        {copiadoRecontacto === clave ? '✓ Copiado' : 'Copiar'}
+                      </button>
+                      {m.enlace ? (
+                        <a
+                          href={m.enlace}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs px-3 py-1 rounded-full text-white"
+                          style={{ backgroundColor: '#25D366' }}
+                        >
+                          WhatsApp
+                        </a>
+                      ) : (
+                        <span className="text-xs text-gray-400 px-1">sin teléfono</span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {mostrarResumen && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
