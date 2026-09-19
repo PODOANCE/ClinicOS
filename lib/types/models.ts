@@ -328,14 +328,17 @@ export interface RecordatorioPlantilla {
   updated_by: string;
 }
 
-// Teléfono de paciente (importado de vez en cuando desde el listado de
-// pacientes de Organízate), usado por Recordatorios para generar enlaces
-// directos de WhatsApp. paciente_clave = nombre completo normalizado.
+// Teléfono (y edad) de paciente, importado de vez en cuando desde el
+// listado de pacientes de Organízate. El teléfono lo usa Recordatorios
+// para generar enlaces directos de WhatsApp; la edad la usa Seguimiento
+// para los pacientes cuyo "Tipo" no se puede deducir de las revisiones.
+// paciente_clave = nombre completo normalizado.
 export interface PacienteTelefono {
   id: string;
   paciente_clave: string;
   nombre_mostrar: string;
   telefono: string;
+  edad: number | null;
   centro_id: string;
   created_at: string;
   created_by: string;

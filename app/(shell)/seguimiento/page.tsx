@@ -7,7 +7,7 @@ import { getUserCentro } from '@/lib/supabase/queries/tasks'
 import { getSeguimientoCitas, getSeguimientoGestion, actualizarGestion } from '@/lib/supabase/queries/seguimiento'
 import { getRolesUsuarioActual } from '@/lib/supabase/queries/stock'
 import { getRecordatoriosPlantilla, actualizarRecordatoriosPlantilla } from '@/lib/supabase/queries/recordatorios'
-import { getTelefonosPorClaves } from '@/lib/supabase/queries/pacientes-telefono'
+import { getTelefonosPorClaves, getEdadesPorClaves } from '@/lib/supabase/queries/pacientes-telefono'
 import { canUserAccess } from '@/lib/permissions/validation'
 import {
   calcularSeguimiento,
@@ -38,7 +38,17 @@ const GESTION_LABEL: Record<SeguimientoGestionEstado, string> = {
 
 type FiltroEstado = 'TODOS' | 'SIN_CITA' | 'CITADA'
 type FiltroPrioridad = 'TODAS' | 'SIN_REVISION' | 'VENCIDA' | 'AL_DIA'
-type OrdenPor = 'PRIORIDAD' | 'ESTUDIO_RECIENTE' | 'ESTUDIO_ANTIGUO'
+type CampoOrden =
+  | 'podologo_estudio'
+  | 'tipo'
+  | 'edad'
+  | 'plantillas'
+  | 'primer_estudio'
+  | 'ultima_cita'
+  | 'meses'
+  | 'num_revisiones'
+  | 'estado'
+  | 'prioridad'
 
 function badgeEstado(estado: string) {
   if (estado === 'Revisión citada') return 'bg-emerald-100 text-emerald-800'
@@ -59,11 +69,80 @@ const ORDEN_PRIORIDAD: Record<string, number> = {
   '—': 3,
 }
 
+function compararCampo(
+  a: PacienteSeguimiento,
+  b: PacienteSeguimiento,
+  campo: CampoOrden,
+  edades: Map<string, number>
+): number {
+  switch (campo) {
+    case 'podologo_estudio':
+      return (a.podologo_estudio ?? '').localeCompare(b.podologo_estudio ?? '', 'es')
+    case 'tipo':
+      return a.tipo.localeCompare(b.tipo, 'es')
+    case 'edad': {
+      const ea = edades.get(a.paciente_clave) ?? -1
+      const eb = edades.get(b.paciente_clave) ?? -1
+      return ea - eb
+    }
+    case 'plantillas':
+      return Number(a.lleva_plantillas) - Number(b.lleva_plantillas)
+    case 'primer_estudio':
+      return (a.primer_estudio ?? '').localeCompare(b.primer_estudio ?? '')
+    case 'ultima_cita':
+      return (a.ultima_cita ?? '').localeCompare(b.ultima_cita ?? '')
+    case 'meses':
+      return (a.meses_desde_ultima ?? -1) - (b.meses_desde_ultima ?? -1)
+    case 'num_revisiones':
+      return a.num_revisiones - b.num_revisiones
+    case 'estado':
+      return a.estado.localeCompare(b.estado, 'es')
+    case 'prioridad': {
+      const diff = ORDEN_PRIORIDAD[a.prioridad] - ORDEN_PRIORIDAD[b.prioridad]
+      if (diff !== 0) return diff
+      // Con la misma prioridad, quien lleva plantillas va primero: es más
+      // importante no dejarlo a su aire que a alguien que solo se hizo el estudio.
+      if (a.lleva_plantillas !== b.lleva_plantillas) return a.lleva_plantillas ? -1 : 1
+      return (b.meses_desde_ultima ?? 0) - (a.meses_desde_ultima ?? 0)
+    }
+  }
+}
+
+function CabeceraOrdenable({
+  campo,
+  ordenCampo,
+  ordenAsc,
+  onClick,
+  children,
+  className,
+}: {
+  campo: CampoOrden
+  ordenCampo: CampoOrden
+  ordenAsc: boolean
+  onClick: (campo: CampoOrden) => void
+  children: React.ReactNode
+  className?: string
+}) {
+  const activo = ordenCampo === campo
+  return (
+    <th className={`px-3 py-2 font-medium ${className ?? ''}`}>
+      <button
+        onClick={() => onClick(campo)}
+        className={`flex items-center gap-1 hover:text-gray-800 whitespace-nowrap ${activo ? 'text-gray-800' : ''}`}
+      >
+        {children}
+        <span className="text-[10px] w-2.5 inline-block">{activo ? (ordenAsc ? '▲' : '▼') : ''}</span>
+      </button>
+    </th>
+  )
+}
+
 export default function SeguimientoPage() {
   const { user, loading: userLoading } = useUser()
 
   const [citas, setCitas] = useState<SeguimientoCita[]>([])
   const [gestiones, setGestiones] = useState<SeguimientoGestion[]>([])
+  const [edadesPorClave, setEdadesPorClave] = useState<Map<string, number>>(new Map())
   const [centroId, setCentroId] = useState<string | null>(null)
   const [roles, setRoles] = useState<Rol[]>([])
   const [loading, setLoading] = useState(true)
@@ -75,7 +154,8 @@ export default function SeguimientoPage() {
   const [soloConPlantillas, setSoloConPlantillas] = useState(false)
   const [busqueda, setBusqueda] = useState('')
   const [mostrarResumen, setMostrarResumen] = useState(false)
-  const [ordenPor, setOrdenPor] = useState<OrdenPor>('PRIORIDAD')
+  const [ordenCampo, setOrdenCampo] = useState<CampoOrden>('prioridad')
+  const [ordenAsc, setOrdenAsc] = useState(true)
   const [aviso, setAviso] = useState<string | null>(null)
 
   const [importando, setImportando] = useState(false)
@@ -113,6 +193,8 @@ export default function SeguimientoPage() {
         const p = await getRecordatoriosPlantilla(ce, 'RECONTACTO')
         setPlantillaRecontacto(p?.texto ?? '')
       }
+      const clavesUnicas = [...new Set(c.map((cita) => cita.paciente_clave))]
+      setEdadesPorClave(await getEdadesPorClaves(clavesUnicas))
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error cargando el seguimiento')
@@ -146,23 +228,17 @@ export default function SeguimientoPage() {
       const q = busqueda.trim().toUpperCase()
       lista = lista.filter((p) => p.nombre_mostrar.toUpperCase().includes(q))
     }
-    return [...lista].sort((a, b) => {
-      if (ordenPor === 'ESTUDIO_RECIENTE' || ordenPor === 'ESTUDIO_ANTIGUO') {
-        const fa = a.primer_estudio ?? ''
-        const fb = b.primer_estudio ?? ''
-        if (fa === fb) return 0
-        if (fa === '') return 1 // sin fecha de estudio, al final
-        if (fb === '') return -1
-        return ordenPor === 'ESTUDIO_RECIENTE' ? fb.localeCompare(fa) : fa.localeCompare(fb)
-      }
-      const diff = ORDEN_PRIORIDAD[a.prioridad] - ORDEN_PRIORIDAD[b.prioridad]
-      if (diff !== 0) return diff
-      // Con la misma prioridad, quien lleva plantillas va primero: es más
-      // importante no dejarlo a su aire que a alguien que solo se hizo el estudio.
-      if (a.lleva_plantillas !== b.lleva_plantillas) return a.lleva_plantillas ? -1 : 1
-      return (b.meses_desde_ultima ?? 0) - (a.meses_desde_ultima ?? 0)
-    })
-  }, [pacientes, filtroEstado, filtroPrioridad, filtroPodologo, soloConPlantillas, busqueda, ordenPor])
+    return [...lista].sort((a, b) => compararCampo(a, b, ordenCampo, edadesPorClave) * (ordenAsc ? 1 : -1))
+  }, [pacientes, filtroEstado, filtroPrioridad, filtroPodologo, soloConPlantillas, busqueda, ordenCampo, ordenAsc, edadesPorClave])
+
+  function handleOrdenar(campo: CampoOrden) {
+    if (campo === ordenCampo) {
+      setOrdenAsc((v) => !v)
+    } else {
+      setOrdenCampo(campo)
+      setOrdenAsc(true)
+    }
+  }
 
   async function handleActualizarGestion(
     p: PacienteSeguimiento,
@@ -403,17 +479,6 @@ export default function SeguimientoPage() {
           ))}
         </select>
 
-        <select
-          value={ordenPor}
-          onChange={(e) => setOrdenPor(e.target.value as OrdenPor)}
-          className="px-3 py-1.5 rounded-full text-sm border border-gray-300 bg-white"
-          title="Orden de la tabla"
-        >
-          <option value="PRIORIDAD">Orden: por prioridad</option>
-          <option value="ESTUDIO_RECIENTE">Orden: 1er estudio, más recientes primero</option>
-          <option value="ESTUDIO_ANTIGUO">Orden: 1er estudio, más antiguos primero</option>
-        </select>
-
         <input
           type="text"
           placeholder="Buscar paciente…"
@@ -548,15 +613,16 @@ export default function SeguimientoPage() {
           <thead>
             <tr className="text-left text-gray-500 border-b border-gray-100" style={{ backgroundColor: '#f4f7fb' }}>
               <th className="px-4 py-2 font-medium">Paciente</th>
-              <th className="px-3 py-2 font-medium">Podólogo</th>
-              <th className="px-3 py-2 font-medium">Tipo</th>
-              <th className="px-3 py-2 font-medium">🦶 Plantillas</th>
-              <th className="px-3 py-2 font-medium">1er estudio</th>
-              <th className="px-3 py-2 font-medium">Última cita</th>
-              <th className="px-3 py-2 font-medium">Meses</th>
-              <th className="px-3 py-2 font-medium">Nº rev.</th>
-              <th className="px-3 py-2 font-medium">Estado</th>
-              <th className="px-3 py-2 font-medium">Prioridad</th>
+              <CabeceraOrdenable campo="podologo_estudio" ordenCampo={ordenCampo} ordenAsc={ordenAsc} onClick={handleOrdenar}>Podólogo</CabeceraOrdenable>
+              <CabeceraOrdenable campo="tipo" ordenCampo={ordenCampo} ordenAsc={ordenAsc} onClick={handleOrdenar}>Tipo</CabeceraOrdenable>
+              <CabeceraOrdenable campo="edad" ordenCampo={ordenCampo} ordenAsc={ordenAsc} onClick={handleOrdenar}>Edad</CabeceraOrdenable>
+              <CabeceraOrdenable campo="plantillas" ordenCampo={ordenCampo} ordenAsc={ordenAsc} onClick={handleOrdenar}>🦶 Plantillas</CabeceraOrdenable>
+              <CabeceraOrdenable campo="primer_estudio" ordenCampo={ordenCampo} ordenAsc={ordenAsc} onClick={handleOrdenar}>1er estudio</CabeceraOrdenable>
+              <CabeceraOrdenable campo="ultima_cita" ordenCampo={ordenCampo} ordenAsc={ordenAsc} onClick={handleOrdenar}>Última cita</CabeceraOrdenable>
+              <CabeceraOrdenable campo="meses" ordenCampo={ordenCampo} ordenAsc={ordenAsc} onClick={handleOrdenar}>Meses</CabeceraOrdenable>
+              <CabeceraOrdenable campo="num_revisiones" ordenCampo={ordenCampo} ordenAsc={ordenAsc} onClick={handleOrdenar}>Nº rev.</CabeceraOrdenable>
+              <CabeceraOrdenable campo="estado" ordenCampo={ordenCampo} ordenAsc={ordenAsc} onClick={handleOrdenar}>Estado</CabeceraOrdenable>
+              <CabeceraOrdenable campo="prioridad" ordenCampo={ordenCampo} ordenAsc={ordenAsc} onClick={handleOrdenar}>Prioridad</CabeceraOrdenable>
               <th className="px-3 py-2 font-medium">Cita futura (fecha, manual)</th>
               <th className="px-3 py-2 font-medium">Gestión recontacto</th>
               <th className="px-3 py-2 font-medium">Próximo intento</th>
@@ -569,6 +635,7 @@ export default function SeguimientoPage() {
                 <td className="px-4 py-2 font-medium text-gray-900 whitespace-nowrap">{p.nombre_mostrar}</td>
                 <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{p.podologo_estudio ?? '—'}</td>
                 <td className="px-3 py-2 text-gray-600">{p.tipo}</td>
+                <td className="px-3 py-2 text-gray-600">{edadesPorClave.get(p.paciente_clave) ?? '—'}</td>
                 <td className="px-3 py-2 whitespace-nowrap">
                   {p.lleva_plantillas ? (
                     <span
@@ -667,7 +734,7 @@ export default function SeguimientoPage() {
             ))}
             {pacientesFiltrados.length === 0 && (
               <tr>
-                <td colSpan={14} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={15} className="px-4 py-8 text-center text-gray-400">
                   No hay pacientes que coincidan con estos filtros.
                 </td>
               </tr>

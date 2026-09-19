@@ -90,6 +90,7 @@ export async function POST(request: NextRequest) {
         paciente_clave: p.paciente_clave,
         nombre_mostrar: p.nombre_mostrar,
         telefono: p.telefono,
+        edad: p.edad,
         centro_id: usuario.centro_id,
         ...actor,
       }))

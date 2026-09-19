@@ -13,7 +13,8 @@ import readXlsxFile from 'read-excel-file/node'
 export interface PacienteTelefonoNormalizado {
   paciente_clave: string
   nombre_mostrar: string
-  telefono: string
+  telefono: string | null
+  edad: number | null
 }
 
 export class ErrorArchivoPacientesTelefono extends Error {
@@ -28,6 +29,7 @@ const COLUMNAS = {
   apellidos: 'APELLIDOS',
   telMovil: 'TEL. MOVIL',
   telFijo: 'TEL. FIJO',
+  edad: 'EDAD',
 } as const
 
 const MAX_FILAS_BUSQUEDA_CABECERA = 10
@@ -98,6 +100,7 @@ interface Cabecera {
   apellidos: number
   telMovil: number
   telFijo: number
+  edad: number
 }
 
 function detectarCabecera(fila: Fila): Cabecera | null {
@@ -110,6 +113,7 @@ function detectarCabecera(fila: Fila): Cabecera | null {
     apellidos,
     telMovil: etiquetas.indexOf(COLUMNAS.telMovil),
     telFijo: etiquetas.indexOf(COLUMNAS.telFijo),
+    edad: etiquetas.indexOf(COLUMNAS.edad),
   }
 }
 
@@ -121,6 +125,12 @@ function normalizarTelefono(valor: string): string | null {
   const digitos = valor.replace(/[^\d]/g, '')
   if (digitos.length < 9) return null
   return digitos
+}
+
+function normalizarEdad(valor: string | null): number | null {
+  if (!valor) return null
+  const edad = parseInt(valor, 10)
+  return Number.isFinite(edad) && edad >= 0 && edad < 130 ? edad : null
 }
 
 export async function parsearListadoPacientes(contenido: Buffer): Promise<PacienteTelefonoNormalizado[]> {
@@ -173,12 +183,14 @@ export async function parsearListadoPacientes(contenido: Buffer): Promise<Pacien
     const movil = textoCelda(celda(fila, cabecera.telMovil))
     const fijo = textoCelda(celda(fila, cabecera.telFijo))
     const telefono = (movil && normalizarTelefono(movil)) || (fijo && normalizarTelefono(fijo)) || null
-    if (!telefono) continue // sin teléfono usable, no aporta nada a Recordatorios
+    const edad = normalizarEdad(textoCelda(celda(fila, cabecera.edad)))
+    if (!telefono && edad === null) continue // no aporta nada ni a Recordatorios ni a Seguimiento
 
     porClave.set(normalizarClave(nombreCompleto), {
       paciente_clave: normalizarClave(nombreCompleto),
       nombre_mostrar: nombreCompleto,
       telefono,
+      edad,
     })
   }
 
