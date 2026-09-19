@@ -48,6 +48,30 @@ const badgeColor: Record<Estado, string> = {
 const DENIM = '#183B5F'
 const PUMPKIN = '#F18852'
 
+const COLOR_ESTADO: Record<Estado, string> = {
+  ok: '#10b981',
+  warn: '#f59e0b',
+  danger: '#ef4444',
+}
+
+// Pirámide de 3 barritas (como el icono de cobertura): verde = las 3
+// encendidas, amarillo = 2, rojo = 1. Sustituye a la barra horizontal.
+function BarrasNivel({ estado }: { estado: Estado }) {
+  const activas = estado === 'ok' ? 3 : estado === 'warn' ? 2 : 1
+  const alturas = [6, 10, 14]
+  return (
+    <div className="flex items-end gap-0.5 flex-shrink-0" title={`Nivel: ${estado === 'ok' ? 'bien' : estado === 'warn' ? 'reponer' : 'crítico'}`}>
+      {alturas.map((h, i) => (
+        <div
+          key={i}
+          className="w-1.5 rounded-sm"
+          style={{ height: h, backgroundColor: i < activas ? COLOR_ESTADO[estado] : '#e5e7eb' }}
+        />
+      ))}
+    </div>
+  )
+}
+
 interface ProductoForm {
   nombre: string
   unidad: string
@@ -578,14 +602,14 @@ export default function StockPage() {
                 )}
               </div>
 
-              <div className="divide-y divide-gray-100">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 p-3">
                 {items.map((p) => {
                   const estado = getEstado(p)
                   const busy = busyIds.has(p.id)
 
                   if (editandoProductoId === p.id) {
                     return (
-                      <div key={p.id} className="p-4 bg-blue-50/40 space-y-3">
+                      <div key={p.id} className="sm:col-span-2 lg:col-span-3 xl:col-span-4 p-4 bg-blue-50/40 rounded-lg border border-blue-100 space-y-3">
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">Nombre</label>
@@ -691,61 +715,21 @@ export default function StockPage() {
                     estado === 'ok' ? 'text-emerald-600' : estado === 'warn' ? 'text-amber-600' : 'text-red-600'
 
                   return (
-                    <div key={p.id} className="flex items-center justify-between px-4 py-3 gap-3 hover:bg-gray-50 transition-colors">
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${dotColor[estado]}`} />
-                        <div className="min-w-0">
-                          <div className="font-medium text-gray-900 truncate">{p.nombre}</div>
-                          <div className="text-xs text-gray-500">
-                            mín {p.stock_minimo}
-                            {editMode && ` · crít ${p.stock_critico} · ${p.proveedor_texto || 'sin proveedor'}`}
-                          </div>
+                    <div
+                      key={p.id}
+                      className="rounded-lg border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all p-3 flex flex-col gap-2 min-w-0"
+                    >
+                      <div className="flex items-start justify-between gap-2 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotColor[estado]}`} />
+                          <span className="font-medium text-gray-900 truncate text-sm" title={p.nombre}>
+                            {p.nombre}
+                          </span>
                         </div>
-                      </div>
-
-                      <div className={`flex items-baseline gap-1 flex-shrink-0 ${colorNumero}`}>
-                        <span className="text-2xl font-extrabold leading-none tabular-nums">{p.stock_actual}</span>
-                        <span className="text-xs font-semibold text-gray-400">{p.unidad}</span>
-                      </div>
-
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className={`hidden sm:inline-block text-xs px-2 py-0.5 rounded-full font-medium ${badgeColor[estado]}`}>
-                          {estado === 'ok' ? 'OK' : estado === 'warn' ? 'Reponer' : 'Crítico'}
-                        </span>
-
-                        {editMode && puedeEditar ? (
-                          <>
-                            <button
-                              onClick={() => handleClick(p, 'CONSUMO')}
-                              disabled={busy || p.stock_actual === 0}
-                              className="w-8 h-8 rounded-full border-2 border-red-200 text-red-600 font-bold hover:bg-red-50 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                            >
-                              −
-                            </button>
-                            <button
-                              onClick={() => handleClick(p, 'ENTRADA')}
-                              disabled={busy}
-                              className="w-8 h-8 rounded-full border-2 border-emerald-200 text-emerald-600 font-bold hover:bg-emerald-50 disabled:opacity-30 transition-colors"
-                            >
-                              +
-                            </button>
-                          </>
-                        ) : (
-                          <div className="hidden sm:block w-16 h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                            <div
-                              className={`h-full rounded-full ${
-                                estado === 'ok' ? 'bg-emerald-500' : estado === 'warn' ? 'bg-amber-500' : 'bg-red-500'
-                              }`}
-                              style={{
-                                width: `${Math.min(100, Math.round((p.stock_actual / Math.max(1, p.stock_minimo * 2)) * 100))}%`,
-                              }}
-                            />
-                          </div>
-                        )}
 
                         {editMode && (
-                          <div className="relative group">
-                            <button className="w-8 h-8 rounded border border-gray-300 text-gray-500 hover:bg-gray-100">
+                          <div className="relative group flex-shrink-0">
+                            <button className="w-7 h-7 rounded border border-gray-300 text-gray-500 hover:bg-gray-100 text-sm">
                               ⋯
                             </button>
                             <div className="hidden group-focus-within:block group-hover:block absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10 w-40 text-sm">
@@ -782,16 +766,54 @@ export default function StockPage() {
                           </div>
                         )}
                       </div>
+
+                      <div className="flex items-center justify-between gap-2">
+                        <div className={`flex items-baseline gap-1 flex-shrink-0 ${colorNumero}`}>
+                          <span className="text-2xl font-extrabold leading-none tabular-nums">{p.stock_actual}</span>
+                          <span className="text-xs font-semibold text-gray-400">{p.unidad}</span>
+                        </div>
+                        <BarrasNivel estado={estado} />
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 min-w-0">
+                        <span className="text-xs text-gray-500 truncate">
+                          mín {p.stock_minimo}
+                          {editMode && ` · crít ${p.stock_critico} · ${p.proveedor_texto || 'sin proveedor'}`}
+                        </span>
+
+                        {editMode && puedeEditar ? (
+                          <div className="flex gap-1 flex-shrink-0">
+                            <button
+                              onClick={() => handleClick(p, 'CONSUMO')}
+                              disabled={busy || p.stock_actual === 0}
+                              className="w-7 h-7 rounded-full border-2 border-red-200 text-red-600 font-bold hover:bg-red-50 disabled:opacity-30 disabled:hover:bg-transparent transition-colors text-sm"
+                            >
+                              −
+                            </button>
+                            <button
+                              onClick={() => handleClick(p, 'ENTRADA')}
+                              disabled={busy}
+                              className="w-7 h-7 rounded-full border-2 border-emerald-200 text-emerald-600 font-bold hover:bg-emerald-50 disabled:opacity-30 transition-colors text-sm"
+                            >
+                              +
+                            </button>
+                          </div>
+                        ) : (
+                          <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${badgeColor[estado]}`}>
+                            {estado === 'ok' ? 'OK' : estado === 'warn' ? 'Reponer' : 'Crítico'}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   )
                 })}
 
                 {items.length === 0 && (
-                  <div className="px-4 py-6 text-center text-gray-400 text-sm">Sin materiales en este grupo</div>
+                  <div className="col-span-full px-4 py-6 text-center text-gray-400 text-sm">Sin materiales en este grupo</div>
                 )}
 
                 {editMode && puedeCrear && (
-                  <div className="p-4">
+                  <div className="col-span-full p-1">
                     {anadiendoAGrupoId === grupo.id ? (
                       <div className="bg-gray-50 rounded-md p-3 space-y-2">
                         <div className="grid grid-cols-2 gap-2">
