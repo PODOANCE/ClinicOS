@@ -103,6 +103,7 @@ export default function StockPage() {
   const [error, setError] = useState<string | null>(null)
 
   const [tabActivo, setTabActivo] = useState<string | null>(null)
+  const [ordenCantidad, setOrdenCantidad] = useState<'nombre' | 'asc' | 'desc'>('nombre')
   const [editMode, setEditMode] = useState(false)
   const [pedidoAbierto, setPedidoAbierto] = useState(false)
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set())
@@ -177,9 +178,10 @@ export default function StockPage() {
   }
 
   function productosDeGrupo(grupoId: string): StockProducto[] {
-    return productos
-      .filter((p) => p.categoria_id === grupoId)
-      .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+    const items = productos.filter((p) => p.categoria_id === grupoId)
+    if (ordenCantidad === 'asc') return items.sort((a, b) => a.stock_actual - b.stock_actual)
+    if (ordenCantidad === 'desc') return items.sort((a, b) => b.stock_actual - a.stock_actual)
+    return items.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
   }
 
   const resumen = useMemo(() => {
@@ -515,22 +517,62 @@ export default function StockPage() {
         </div>
       )}
 
-      {/* Pestañas */}
-      <div className="flex gap-2 flex-wrap">
-        {categoriasNivel1.map((cat) => (
+      {/* Pestañas + orden */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex gap-2 flex-wrap">
+          {categoriasNivel1.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setTabActivo(cat.id)}
+              className="px-5 py-2 rounded-full text-sm font-semibold transition-colors"
+              style={
+                tabActivo === cat.id
+                  ? { backgroundColor: DENIM, color: '#fff' }
+                  : { backgroundColor: '#fff', color: '#4a5a6a', border: '1px solid #e2e8f0' }
+              }
+            >
+              {cat.nombre}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1 text-sm">
+          <span className="text-gray-500 mr-1">Ordenar:</span>
           <button
-            key={cat.id}
-            onClick={() => setTabActivo(cat.id)}
-            className="px-5 py-2 rounded-full text-sm font-semibold transition-colors"
+            onClick={() => setOrdenCantidad('nombre')}
+            className="px-3 py-1.5 rounded-full font-medium transition-colors"
             style={
-              tabActivo === cat.id
+              ordenCantidad === 'nombre'
                 ? { backgroundColor: DENIM, color: '#fff' }
                 : { backgroundColor: '#fff', color: '#4a5a6a', border: '1px solid #e2e8f0' }
             }
           >
-            {cat.nombre}
+            A-Z
           </button>
-        ))}
+          <button
+            onClick={() => setOrdenCantidad('asc')}
+            className="px-3 py-1.5 rounded-full font-medium transition-colors"
+            title="De menos a más cantidad"
+            style={
+              ordenCantidad === 'asc'
+                ? { backgroundColor: DENIM, color: '#fff' }
+                : { backgroundColor: '#fff', color: '#4a5a6a', border: '1px solid #e2e8f0' }
+            }
+          >
+            Cantidad ↑
+          </button>
+          <button
+            onClick={() => setOrdenCantidad('desc')}
+            className="px-3 py-1.5 rounded-full font-medium transition-colors"
+            title="De más a menos cantidad"
+            style={
+              ordenCantidad === 'desc'
+                ? { backgroundColor: DENIM, color: '#fff' }
+                : { backgroundColor: '#fff', color: '#4a5a6a', border: '1px solid #e2e8f0' }
+            }
+          >
+            Cantidad ↓
+          </button>
+        </div>
       </div>
 
       {/* Grupos de la pestaña activa */}

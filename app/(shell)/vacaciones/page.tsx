@@ -59,6 +59,11 @@ function keyLocal(d: Date): string {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
 }
 
+function formatearDDMMAAAA(iso: string): string {
+  const [y, m, d] = iso.split('-')
+  return `${d}/${m}/${y}`
+}
+
 function addDays(d: Date, n: number): Date {
   const r = new Date(d)
   r.setDate(r.getDate() + n)
@@ -223,6 +228,18 @@ export default function VacacionesPage() {
     const filas: (Date | null)[][] = []
     for (let i = 0; i < dias.length; i += 7) filas.push(dias.slice(i, i + 7))
     return filas
+  }
+
+  function seleccionarDia(k: string) {
+    setDiaSeleccionado(k)
+    // Si estamos filtrando por un trabajador y aún no tiene nada ese día,
+    // precarga el formulario de alta con él para editar más rápido.
+    if (filtroPeriodosTrabajadorId) {
+      const yaTiene = (dayMapAnio.get(k) ?? []).some((e) => e.trabajadorId === filtroPeriodosTrabajadorId)
+      if (!yaTiene) {
+        setFormAltaDia((f) => ({ ...f, trabajador_id: filtroPeriodosTrabajadorId }))
+      }
+    }
   }
 
   function irAnioAnterior() {
@@ -396,7 +413,7 @@ export default function VacacionesPage() {
 
   async function handleBorrarPeriodo(p: VacacionesPeriodo) {
     const trabajador = trabajadoresPorId.get(p.trabajador_id)
-    if (!confirm(`¿Eliminar el periodo de ${trabajador?.nombre ?? ''} (${p.fecha_inicio} – ${p.fecha_fin})?`)) return
+    if (!confirm(`¿Eliminar el periodo de ${trabajador?.nombre ?? ''} (${formatearDDMMAAAA(p.fecha_inicio)} – ${formatearDDMMAAAA(p.fecha_fin)})?`)) return
     try {
       await eliminarVacacionesPeriodo(p.id)
       setPeriodos((prev) => prev.filter((x) => x.id !== p.id))
@@ -603,7 +620,7 @@ export default function VacacionesPage() {
                     return (
                       <button
                         key={j}
-                        onClick={() => setDiaSeleccionado(k)}
+                        onClick={() => seleccionarDia(k)}
                         title={festivo ? festivo.nombre : undefined}
                         className={`h-7 text-[12px] relative hover:brightness-95 transition flex items-center justify-center ${
                           esPasado ? 'opacity-50' : ''
@@ -951,7 +968,7 @@ export default function VacacionesPage() {
                           <div className="min-w-0">
                             <div className="font-medium text-gray-800 truncate">{t?.nombre}</div>
                             <div className="text-xs text-gray-500">
-                              {p.fecha_inicio} – {p.fecha_fin} · {TIPO_LABEL[p.tipo]}
+                              {formatearDDMMAAAA(p.fecha_inicio)} – {formatearDDMMAAAA(p.fecha_fin)} · {TIPO_LABEL[p.tipo]}
                             </div>
                           </div>
                         </div>
