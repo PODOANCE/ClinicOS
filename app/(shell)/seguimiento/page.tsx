@@ -62,6 +62,7 @@ export default function SeguimientoPage() {
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('SIN_CITA')
   const [filtroPrioridad, setFiltroPrioridad] = useState<FiltroPrioridad>('TODAS')
   const [filtroPodologo, setFiltroPodologo] = useState<string>('TODOS')
+  const [soloConPlantillas, setSoloConPlantillas] = useState(false)
   const [busqueda, setBusqueda] = useState('')
   const [mostrarResumen, setMostrarResumen] = useState(false)
   const [ordenPor, setOrdenPor] = useState<OrdenPor>('PRIORIDAD')
@@ -118,6 +119,7 @@ export default function SeguimientoPage() {
     if (filtroPrioridad === 'VENCIDA') lista = lista.filter((p) => p.prioridad === 'VENCIDA')
     if (filtroPrioridad === 'AL_DIA') lista = lista.filter((p) => p.prioridad === 'Al día')
     if (filtroPodologo !== 'TODOS') lista = lista.filter((p) => p.podologo_estudio === filtroPodologo)
+    if (soloConPlantillas) lista = lista.filter((p) => p.lleva_plantillas)
     if (busqueda.trim()) {
       const q = busqueda.trim().toUpperCase()
       lista = lista.filter((p) => p.nombre_mostrar.toUpperCase().includes(q))
@@ -133,9 +135,12 @@ export default function SeguimientoPage() {
       }
       const diff = ORDEN_PRIORIDAD[a.prioridad] - ORDEN_PRIORIDAD[b.prioridad]
       if (diff !== 0) return diff
+      // Con la misma prioridad, quien lleva plantillas va primero: es más
+      // importante no dejarlo a su aire que a alguien que solo se hizo el estudio.
+      if (a.lleva_plantillas !== b.lleva_plantillas) return a.lleva_plantillas ? -1 : 1
       return (b.meses_desde_ultima ?? 0) - (a.meses_desde_ultima ?? 0)
     })
-  }, [pacientes, filtroEstado, filtroPrioridad, filtroPodologo, busqueda, ordenPor])
+  }, [pacientes, filtroEstado, filtroPrioridad, filtroPodologo, soloConPlantillas, busqueda, ordenPor])
 
   async function handleActualizarGestion(
     p: PacienteSeguimiento,
@@ -194,6 +199,7 @@ export default function SeguimientoPage() {
 
       setResultadoImport(
         `Importadas ${data.insertadas} citas nuevas (${data.yaExistentes} ya existían), ${data.pacientesNuevos} pacientes nuevos.` +
+          (data.descartadasNoBiomecanica ? ` ${data.descartadasNoBiomecanica} filas de otros servicios (no biomecánica/plantillas) ignoradas.` : '') +
           (data.errores?.length ? ` ${data.errores.length} filas con error, revisadas.` : '')
       )
       await cargar()
@@ -245,7 +251,7 @@ export default function SeguimientoPage() {
       </div>
 
       {/* KPI */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <div className="rounded-xl border border-gray-200 bg-white shadow-sm px-4 py-3">
           <div className="text-2xl font-bold" style={{ color: DENIM }}>{resumen.total}</div>
           <div className="text-xs text-gray-500 font-medium mt-0.5">Pacientes</div>
@@ -261,6 +267,10 @@ export default function SeguimientoPage() {
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
           <div className="text-2xl font-bold text-emerald-700">{resumen.revision_citada}</div>
           <div className="text-xs text-emerald-700 font-medium mt-0.5">Revisión citada</div>
+        </div>
+        <div className="rounded-xl border-2 px-4 py-3" style={{ borderColor: PUMPKIN, backgroundColor: '#FEF1EA' }}>
+          <div className="text-2xl font-bold" style={{ color: PUMPKIN }}>{resumen.con_plantillas_pendientes}</div>
+          <div className="text-xs font-medium mt-0.5" style={{ color: PUMPKIN }}>🦶 Con plantillas, sin cita</div>
         </div>
       </div>
 
@@ -298,6 +308,19 @@ export default function SeguimientoPage() {
           <option value="VENCIDA">Vencida</option>
           <option value="AL_DIA">Al día</option>
         </select>
+
+        <button
+          onClick={() => setSoloConPlantillas((v) => !v)}
+          className="px-4 py-1.5 rounded-full text-sm font-semibold transition-colors whitespace-nowrap"
+          style={
+            soloConPlantillas
+              ? { backgroundColor: PUMPKIN, color: '#fff' }
+              : { backgroundColor: '#fff', color: '#4a5a6a', border: '1px solid #e2e8f0' }
+          }
+          title="Solo pacientes con señal de plantillas registrada"
+        >
+          🦶 Con plantillas
+        </button>
 
         <select
           value={filtroPodologo}
@@ -376,6 +399,7 @@ export default function SeguimientoPage() {
               <th className="px-4 py-2 font-medium">Paciente</th>
               <th className="px-3 py-2 font-medium">Podólogo</th>
               <th className="px-3 py-2 font-medium">Tipo</th>
+              <th className="px-3 py-2 font-medium">🦶 Plantillas</th>
               <th className="px-3 py-2 font-medium">1er estudio</th>
               <th className="px-3 py-2 font-medium">Última cita</th>
               <th className="px-3 py-2 font-medium">Meses</th>
@@ -394,6 +418,19 @@ export default function SeguimientoPage() {
                 <td className="px-4 py-2 font-medium text-gray-900 whitespace-nowrap">{p.nombre_mostrar}</td>
                 <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{p.podologo_estudio ?? '—'}</td>
                 <td className="px-3 py-2 text-gray-600">{p.tipo}</td>
+                <td className="px-3 py-2 whitespace-nowrap">
+                  {p.lleva_plantillas ? (
+                    <span
+                      className="text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
+                      style={{ backgroundColor: '#FEF1EA', color: PUMPKIN }}
+                      title={`Señal de plantillas: ${p.fecha_entrega_plantillas}`}
+                    >
+                      Sí ({p.fecha_entrega_plantillas})
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">—</span>
+                  )}
+                </td>
                 <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{p.primer_estudio ?? '—'}</td>
                 <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{p.ultima_cita ?? '—'}</td>
                 <td className="px-3 py-2 text-gray-600">{p.meses_desde_ultima ?? '—'}</td>
@@ -479,7 +516,7 @@ export default function SeguimientoPage() {
             ))}
             {pacientesFiltrados.length === 0 && (
               <tr>
-                <td colSpan={13} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={14} className="px-4 py-8 text-center text-gray-400">
                   No hay pacientes que coincidan con estos filtros.
                 </td>
               </tr>

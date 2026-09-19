@@ -22,6 +22,7 @@ const PALABRA_ADULTO = 'adulto'
 const TEXTO_EXCLUIR_REVISION = '1 mes' // control de adaptación: no cuenta como revisión periódica
 const MESES_VENCIDA_NINO = 8
 const MESES_VENCIDA_ADULTO = 14
+const PALABRA_SENAL = 'señal' // cita de "señal" = paga y agenda la entrega de las plantillas
 
 export type SeguimientoEstado = 'Revisión citada' | 'SIN CITA - recontactar'
 export type SeguimientoPrioridad = 'Sin revisión previa' | 'VENCIDA' | 'Al día' | '—'
@@ -39,6 +40,8 @@ export interface PacienteSeguimiento {
   tipo: SeguimientoTipo
   prioridad: SeguimientoPrioridad
   podologo_estudio: string | null
+  lleva_plantillas: boolean
+  fecha_entrega_plantillas: string | null
   // columnas de gestión manual, tal cual en seguimiento_gestion
   cita_futura_manual: boolean
   cita_futura_fecha: string | null
@@ -65,6 +68,14 @@ function esInfantil(tratamiento: string): boolean {
 
 function esAdulto(tratamiento: string): boolean {
   return contieneTexto(tratamiento, PALABRA_ADULTO)
+}
+
+// "SEÑAL PLANTILLAS ADULTO" / "SEÑAL PLANTILLAS NIÑX": paga y apalabra la
+// entrega de las plantillas. Es la señal más fiable de que el paciente
+// lleva tratamiento (no solo estudio) — por eso hay que priorizar su
+// seguimiento por encima de quien solo se hizo el estudio.
+function esSenalPlantillas(tratamiento: string): boolean {
+  return contieneTexto(tratamiento, PALABRA_SENAL) && contieneTexto(tratamiento, 'plantilla')
 }
 
 function mesesEntre(desde: Date, hasta: Date): number {
@@ -125,6 +136,14 @@ export function calcularSeguimiento(
     const conAgendaEstudio = lista.find((c) => esEstudio(c.tratamiento) && c.agenda)
     const podologoEstudio = conAgendaEstudio?.agenda ?? null
 
+    // La fecha de entrega se toma como la última señal de plantillas que
+    // aparezca (puede haber más de una si se reagenda la entrega).
+    const senales = lista.filter((c) => esSenalPlantillas(c.tratamiento))
+    const llevaPlantillas = senales.length > 0
+    const fechaEntregaPlantillas = llevaPlantillas
+      ? new Date(Math.max(...senales.map((c) => aFecha(c.fecha).getTime()))).toISOString().slice(0, 10)
+      : null
+
     // El tipo (Infantil/Adulto) se decide por las REVISIONES, no por el
     // estudio — igual que las columnas T/U de la plantilla Excel original:
     // si un paciente tiene revisiones de ambos tipos (raro, pero posible),
@@ -163,6 +182,8 @@ export function calcularSeguimiento(
       tipo,
       prioridad,
       podologo_estudio: podologoEstudio,
+      lleva_plantillas: llevaPlantillas,
+      fecha_entrega_plantillas: fechaEntregaPlantillas,
       cita_futura_manual: gestion?.cita_futura_manual ?? false,
       cita_futura_fecha: gestion?.cita_futura_fecha ?? null,
       gestion_recontacto: gestion?.gestion_recontacto ?? 'PENDIENTE',
@@ -181,6 +202,7 @@ export interface ResumenSeguimiento {
   sin_revision_previa: number
   vencidas: number
   al_dia: number
+  con_plantillas_pendientes: number
 }
 
 export function calcularResumen(pacientes: PacienteSeguimiento[]): ResumenSeguimiento {
@@ -191,6 +213,7 @@ export function calcularResumen(pacientes: PacienteSeguimiento[]): ResumenSeguim
     sin_revision_previa: pacientes.filter((p) => p.prioridad === 'Sin revisión previa').length,
     vencidas: pacientes.filter((p) => p.prioridad === 'VENCIDA').length,
     al_dia: pacientes.filter((p) => p.prioridad === 'Al día').length,
+    con_plantillas_pendientes: pacientes.filter((p) => p.lleva_plantillas && p.estado === 'SIN CITA - recontactar').length,
   }
 }
 

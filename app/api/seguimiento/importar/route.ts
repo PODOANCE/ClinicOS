@@ -165,6 +165,7 @@ export async function POST(request: NextRequest) {
       insertadas: insertados,
       yaExistentes: filas.length - insertados,
       pacientesNuevos,
+      descartadasNoBiomecanica: parseo.descartadasNoBiomecanica,
       errores: parseo.errores,
     })
   } catch (error) {

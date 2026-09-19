@@ -34,6 +34,7 @@ export interface ResultadoParseoCitas {
   citas: CitaNormalizada[]
   errores: ErrorFila[]
   totalFilas: number
+  descartadasNoBiomecanica: number
 }
 
 export class ErrorArchivoSeguimiento extends Error {
@@ -132,6 +133,16 @@ function celda(fila: Fila, indice: number): unknown {
   return indice >= 0 ? fila[indice] : undefined
 }
 
+// El export de Organízate ("Citas - General") trae la agenda de toda la
+// clínica (papiloma, cirugía ungueal, cura, taller...), no solo
+// biomecánica. Solo nos interesa lo que alimenta el seguimiento de
+// revisiones: estudios/revisiones de biomecánica y todo lo relacionado con
+// plantillas (señal, entrega, modificación).
+function esTratamientoDeSeguimiento(tratamiento: string): boolean {
+  const t = tratamiento.toUpperCase()
+  return t.includes('BIOMEC') || t.includes('PLANTILLA') || t.includes('REVISI')
+}
+
 export function calcularHuellaCita(
   fecha: string,
   hora: string | null,
@@ -174,6 +185,7 @@ export async function parsearExportOrganizate(contenido: Buffer): Promise<Result
 
   const errores: ErrorFila[] = []
   const citas: CitaNormalizada[] = []
+  let descartadasNoBiomecanica = 0
 
   filas.forEach((fila, indice) => {
     const numeroFila = indice + 1
@@ -198,6 +210,10 @@ export async function parsearExportOrganizate(contenido: Buffer): Promise<Result
       errores.push({ fila: numeroFila, motivo: 'Tratamiento vacío' })
       return
     }
+    if (!esTratamientoDeSeguimiento(tratamiento)) {
+      descartadasNoBiomecanica += 1
+      return
+    }
 
     const pacienteClave = paciente.toUpperCase().replace(/\s+/g, ' ')
     const hora = textoCelda(celda(fila, cabecera!.hora))
@@ -217,5 +233,5 @@ export async function parsearExportOrganizate(contenido: Buffer): Promise<Result
     })
   })
 
-  return { citas, errores, totalFilas: citas.length + errores.length }
+  return { citas, errores, totalFilas: citas.length + errores.length + descartadasNoBiomecanica, descartadasNoBiomecanica }
 }
