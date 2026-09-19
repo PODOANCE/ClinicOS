@@ -244,7 +244,7 @@ export default function SeguimientoPage() {
             >
               {importando ? 'Importando…' : '📥 Importar citas de Organízate'}
             </button>
-            <input ref={inputArchivoRef} type="file" accept=".xlsx" className="hidden" onChange={handleImportar} />
+            <input ref={inputArchivoRef} type="file" accept=".xlsx,.csv" className="hidden" onChange={handleImportar} />
             {resultadoImport && <p className="text-xs text-gray-500 max-w-xs text-right">{resultadoImport}</p>}
           </div>
         )}

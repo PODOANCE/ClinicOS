@@ -80,9 +80,14 @@ function parsearFecha(valor: unknown): string | null {
   }
   const texto = textoCelda(valor)
   if (!texto) return null
-  const coincidencia = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+
+  // dd/mm/aaaa (Excel) o aaaa-mm-dd (CSV de Organízate)
+  const conBarras = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  const conGuiones = texto.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)
+  const coincidencia = conBarras ?? conGuiones
   if (!coincidencia) return null
-  const [, dStr, mStr, aStr] = coincidencia
+  const [, p1, p2, p3] = coincidencia
+  const [dStr, mStr, aStr] = conBarras ? [p1, p2, p3] : [p3, p2, p1]
   const dia = Number(dStr)
   const mes = Number(mStr)
   const anio = Number(aStr)
@@ -155,19 +160,71 @@ export function calcularHuellaCita(
     .digest('hex')
 }
 
+// Organízate a veces exporta un CSV con ";" como separador (formato Excel
+// España) en vez de un XLSX real — y a veces ese CSV llega nombrado como
+// ".xlsx" por el propio export. Un XLSX es un ZIP y siempre empieza por la
+// firma "PK"; si no, lo tratamos como texto delimitado.
+function pareceXlsx(contenido: Buffer): boolean {
+  return contenido.length >= 2 && contenido[0] === 0x50 && contenido[1] === 0x4b
+}
+
+function parsearLineaCSV(linea: string, separador: string): string[] {
+  const campos: string[] = []
+  let actual = ''
+  let dentroComillas = false
+  for (let i = 0; i < linea.length; i++) {
+    const c = linea[i]
+    if (dentroComillas) {
+      if (c === '"') {
+        if (linea[i + 1] === '"') {
+          actual += '"'
+          i++
+        } else {
+          dentroComillas = false
+        }
+      } else {
+        actual += c
+      }
+    } else if (c === '"') {
+      dentroComillas = true
+    } else if (c === separador) {
+      campos.push(actual)
+      actual = ''
+    } else {
+      actual += c
+    }
+  }
+  campos.push(actual)
+  return campos
+}
+
+function parsearCSV(contenido: Buffer): Fila[] {
+  const texto = contenido.toString('utf-8').replace(/^﻿/, '')
+  const lineas = texto.split(/\r\n|\n/).filter((l) => l.length > 0)
+  const separador = lineas[0]?.includes(';') ? ';' : ','
+  return lineas.map((linea) => parsearLineaCSV(linea, separador))
+}
+
 export async function parsearExportOrganizate(contenido: Buffer): Promise<ResultadoParseoCitas> {
-  let hojas: { sheet: string; data: Fila[] }[]
-  try {
-    hojas = await readXlsxFile(contenido)
-  } catch {
-    throw new ErrorArchivoSeguimiento('El archivo no es un XLSX válido o está dañado.')
-  }
+  let filas: Fila[]
 
-  if (hojas.length === 0 || hojas[0].data.length === 0) {
-    throw new ErrorArchivoSeguimiento('El archivo no contiene ninguna hoja con datos.')
+  if (pareceXlsx(contenido)) {
+    let hojas: { sheet: string; data: Fila[] }[]
+    try {
+      hojas = await readXlsxFile(contenido)
+    } catch {
+      throw new ErrorArchivoSeguimiento('El archivo no es un XLSX válido o está dañado.')
+    }
+    if (hojas.length === 0 || hojas[0].data.length === 0) {
+      throw new ErrorArchivoSeguimiento('El archivo no contiene ninguna hoja con datos.')
+    }
+    filas = hojas[0].data
+  } else {
+    filas = parsearCSV(contenido)
+    if (filas.length === 0) {
+      throw new ErrorArchivoSeguimiento('El archivo no contiene ninguna fila con datos.')
+    }
   }
-
-  const filas = hojas[0].data
 
   // Busca la primera cabecera en las primeras filas; si se han pegado
   // varios exports seguidos, cada cabecera repetida se detecta y se salta

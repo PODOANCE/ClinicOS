@@ -71,8 +71,9 @@ export async function POST(request: NextRequest) {
     if (!(archivo instanceof File)) {
       return NextResponse.json({ error: 'Falta el archivo en el campo "archivo"', code: 'ARCHIVO_AUSENTE' }, { status: 400 })
     }
-    if (!archivo.name.toLowerCase().endsWith('.xlsx')) {
-      return NextResponse.json({ error: 'Solo se admiten archivos .xlsx', code: 'FORMATO_NO_ADMITIDO' }, { status: 400 })
+    const nombreArchivo = archivo.name.toLowerCase()
+    if (!nombreArchivo.endsWith('.xlsx') && !nombreArchivo.endsWith('.csv')) {
+      return NextResponse.json({ error: 'Solo se admiten archivos .xlsx o .csv', code: 'FORMATO_NO_ADMITIDO' }, { status: 400 })
     }
     if (archivo.size === 0) {
       return NextResponse.json({ error: 'El archivo está vacío', code: 'ARCHIVO_VACIO' }, { status: 400 })
