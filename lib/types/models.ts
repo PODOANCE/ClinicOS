@@ -154,6 +154,9 @@ export interface PanelFacturacionMensual {
   anio: number;
   mes: number;
   facturacion: number;
+  facturacion_efectivo: number;
+  facturacion_tarjeta: number;
+  facturacion_transferencia: number;
   pacientes_nuevos: number;
   centro_id: string;
 }

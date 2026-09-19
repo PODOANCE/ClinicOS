@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useUser } from '@/lib/contexts/UserContext'
+import { createClient } from '@/lib/supabase/browser'
 import { getUserCentro } from '@/lib/supabase/queries/tasks'
 import { getRolesUsuarioActual } from '@/lib/supabase/queries/stock'
 import {
@@ -97,6 +98,9 @@ export default function PanelControlPage() {
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('resumen')
   const [modoPresentacion, setModoPresentacion] = useState(true)
+  const [importando, setImportando] = useState(false)
+  const [resultadoImport, setResultadoImport] = useState<string | null>(null)
+  const inputArchivoRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (user) cargar()
@@ -134,6 +138,45 @@ export default function PanelControlPage() {
       setError(err instanceof Error ? err.message : 'Error cargando el panel')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleImportar(e: React.ChangeEvent<HTMLInputElement>) {
+    const archivo = e.target.files?.[0]
+    if (!archivo) return
+    setImportando(true)
+    setResultadoImport(null)
+    try {
+      const supabase = createClient()
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      const formData = new FormData()
+      formData.append('archivo', archivo)
+
+      const res = await fetch('/api/panel/importar', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session?.access_token ?? ''}` },
+        body: formData,
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error importando el archivo')
+
+      setResultadoImport(
+        `${MESES_LARGO[data.mes - 1]} ${data.anio}: ${eur(data.facturacionTotal)} en ${data.filasProcesadas} servicios, ` +
+          `${data.serviciosDistintos} tipos de servicio, ${data.profesionales} profesionales.` +
+          (data.formasPagoNoReconocidas?.length
+            ? ` Formas de pago no reconocidas (no se guardaron en el desglose): ${data.formasPagoNoReconocidas.map((f: { forma: string; importe: number }) => `${f.forma} (${eur(f.importe)})`).join(', ')}.`
+            : '') +
+          (data.errores?.length ? ` ${data.errores.length} filas con error, revisadas.` : '')
+      )
+      await cargar()
+    } catch (err) {
+      setResultadoImport(err instanceof Error ? err.message : 'Error importando el archivo')
+    } finally {
+      setImportando(false)
+      if (inputArchivoRef.current) inputArchivoRef.current.value = ''
     }
   }
 
@@ -199,6 +242,19 @@ export default function PanelControlPage() {
               </option>
             ))}
           </select>
+          {puedeEditar && !modoPresentacion && (
+            <div className="flex flex-col items-end gap-1">
+              <button
+                onClick={() => inputArchivoRef.current?.click()}
+                disabled={importando}
+                className="px-4 py-2 rounded-md text-sm font-medium border bg-white text-gray-700 border-gray-300 disabled:opacity-50"
+              >
+                {importando ? 'Importando…' : '📥 Importar Excel del mes'}
+              </button>
+              <input ref={inputArchivoRef} type="file" accept=".xlsx" className="hidden" onChange={handleImportar} />
+              {resultadoImport && <p className="text-xs text-gray-500 max-w-xs text-right">{resultadoImport}</p>}
+            </div>
+          )}
           {puedeEditar && (
             <button
               onClick={() => {
@@ -782,10 +838,14 @@ function PanelFacturacionTab({
   puedeEditar: boolean
   onGuardar: (mes: number, campos: Partial<{ facturacion: number; pacientes_nuevos: number }>) => void
 }) {
+  const [mostrarDesglose, setMostrarDesglose] = useState(false)
   const anios = useMemo(() => Array.from(new Set(facturacion.map((f) => f.anio))).sort(), [facturacion])
   const delAnio = facturacion.filter((f) => f.anio === anio)
   const totFact = delAnio.reduce((a, f) => a + Number(f.facturacion), 0)
   const totNue = delAnio.reduce((a, f) => a + f.pacientes_nuevos, 0)
+  const totEfectivo = delAnio.reduce((a, f) => a + Number(f.facturacion_efectivo ?? 0), 0)
+  const totTarjeta = delAnio.reduce((a, f) => a + Number(f.facturacion_tarjeta ?? 0), 0)
+  const totTransferencia = delAnio.reduce((a, f) => a + Number(f.facturacion_transferencia ?? 0), 0)
 
   function valorAnio(a: number, mes: number): number {
     return facturacion.find((f) => f.anio === a && f.mes === mes)?.facturacion ?? 0
@@ -795,12 +855,27 @@ function PanelFacturacionTab({
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-lg shadow p-5">
-        <h2 className="font-semibold mb-3">Facturación mes a mes — {anio}</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-semibold">Facturación mes a mes — {anio}</h2>
+          <button
+            onClick={() => setMostrarDesglose((v) => !v)}
+            className="text-xs font-medium underline decoration-dotted text-gray-500"
+          >
+            {mostrarDesglose ? 'Ocultar desglose por forma de pago' : 'Ver desglose por forma de pago'}
+          </button>
+        </div>
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-gray-500 uppercase border-b border-gray-100">
               <th className="py-2">Mes</th>
-              <th className="py-2 w-36">Facturación (€)</th>
+              <th className="py-2 w-32">Facturación (€)</th>
+              {mostrarDesglose && (
+                <>
+                  <th className="py-2 w-28 font-normal normal-case text-gray-400">Efectivo</th>
+                  <th className="py-2 w-28 font-normal normal-case text-gray-400">Tarjeta</th>
+                  <th className="py-2 w-28 font-normal normal-case text-gray-400">Transferencia</th>
+                </>
+              )}
               <th className="py-2 w-36">Pacientes nuevos</th>
             </tr>
           </thead>
@@ -819,6 +894,19 @@ function PanelFacturacionTab({
                       className="w-full border border-transparent hover:border-gray-300 focus:border-blue-400 rounded px-2 py-1 outline-none text-right"
                     />
                   </td>
+                  {mostrarDesglose && (
+                    <>
+                      <td className="py-1.5 text-right text-gray-400 text-xs pr-2">
+                        {fila?.facturacion_efectivo ? num(fila.facturacion_efectivo) : '—'}
+                      </td>
+                      <td className="py-1.5 text-right text-gray-400 text-xs pr-2">
+                        {fila?.facturacion_tarjeta ? num(fila.facturacion_tarjeta) : '—'}
+                      </td>
+                      <td className="py-1.5 text-right text-gray-400 text-xs pr-2">
+                        {fila?.facturacion_transferencia ? num(fila.facturacion_transferencia) : '—'}
+                      </td>
+                    </>
+                  )}
                   <td className="py-1.5">
                     <input
                       type="number"
@@ -836,6 +924,13 @@ function PanelFacturacionTab({
             <tr className="font-bold border-t-2 border-gray-200">
               <td className="py-2">TOTAL</td>
               <td className="py-2 text-right">{num(totFact)}</td>
+              {mostrarDesglose && (
+                <>
+                  <td className="py-2 text-right text-xs text-gray-500">{num(totEfectivo)}</td>
+                  <td className="py-2 text-right text-xs text-gray-500">{num(totTarjeta)}</td>
+                  <td className="py-2 text-right text-xs text-gray-500">{num(totTransferencia)}</td>
+                </>
+              )}
               <td className="py-2 text-right">{num(totNue)}</td>
             </tr>
           </tfoot>

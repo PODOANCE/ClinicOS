@@ -47,7 +47,17 @@ export async function getPanelFacturacion(): Promise<PanelFacturacionMensual[]> 
   if (error) throw error
   return (data as PanelFacturacionMensual[]) || []
 }
-export async function upsertPanelFacturacion(input: { anio: number; mes: number; facturacion: number; pacientes_nuevos: number; centro_id: string; actorId: string }) {
+export async function upsertPanelFacturacion(input: {
+  anio: number
+  mes: number
+  facturacion: number
+  pacientes_nuevos: number
+  centro_id: string
+  actorId: string
+  facturacion_efectivo?: number
+  facturacion_tarjeta?: number
+  facturacion_transferencia?: number
+}) {
   const { actorId, ...campos } = input
   const supabase = createClient() as any
   const { data, error } = await supabase
