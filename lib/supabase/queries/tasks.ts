@@ -229,6 +229,22 @@ export async function getUserCentro(userId: string): Promise<string> {
   return data.centro_id
 }
 
+export async function getNombreUsuario(userId: string): Promise<string | null> {
+  const supabase = createClient()
+
+  const data = await withJWTRetry<{ nombre: string | null }>(
+    () =>
+      supabase
+        .from('usuarios')
+        .select('nombre')
+        .eq('id', userId)
+        .single() as any,
+    'getNombreUsuario'
+  )
+
+  return data.nombre
+}
+
 export async function isSupervisor(userId: string): Promise<boolean> {
   const supabase = createClient()
 
