@@ -487,9 +487,14 @@ export default function VacacionesPage() {
         </div>
       </div>
 
+      {puedeEditar && !editMode && (
+        <div className="bg-gray-50 border border-gray-200 text-gray-600 text-sm rounded-md px-4 py-2">
+          💡 Haz clic en cualquier día para añadir una ausencia o marcar un festivo. Dale a "✏️ Editar" para crear un rango de fechas de golpe, editar/borrar periodos completos o cambiar los días anuales de cada persona.
+        </div>
+      )}
       {editMode && (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-md px-4 py-2">
-          ✏️ Modo edición — haz clic en un día para añadir una ausencia o marcar un festivo.
+          ✏️ Modo edición — añade rangos de fechas de golpe, edita o borra periodos completos y cambia los días anuales de cada persona.
         </div>
       )}
 
@@ -684,7 +689,7 @@ export default function VacacionesPage() {
                 <span>
                   🎉 <strong>{festivoDia.nombre}</strong> · {FESTIVO_LABEL[festivoDia.tipo]}
                 </span>
-                {editMode && puedeEditar && (
+                {puedeEditar && (
                   <button onClick={() => handleQuitarFestivo(festivoDia.id)} className="text-red-600 text-xs font-medium">
                     Quitar
                   </button>
@@ -703,7 +708,7 @@ export default function VacacionesPage() {
                       <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: t?.color }} />
                       {t?.nombre} <span className="text-gray-400">· {TIPO_LABEL[e.tipo]}</span>
                     </span>
-                    {editMode && puedeEditar && (
+                    {puedeEditar && (
                       <button
                         onClick={() => handleQuitarDia(e.periodoId, diaSeleccionado)}
                         className="text-red-600 text-xs font-medium"
@@ -716,7 +721,7 @@ export default function VacacionesPage() {
               })}
             </div>
 
-            {editMode && puedeEditar && (
+            {puedeEditar && (
               <div className="border-t border-gray-100 pt-3 space-y-3">
                 {trabajadoresDisponiblesDia.length > 0 && (
                   <div className="space-y-2">
