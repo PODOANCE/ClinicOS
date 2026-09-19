@@ -67,6 +67,7 @@ export async function actualizarGestion(input: {
   nombreMostrar: string
   centroId: string
   citaFuturaManual?: boolean
+  citaFuturaFecha?: string | null
   gestionRecontacto?: SeguimientoGestionEstado
   proximoIntento?: string | null
   notas?: string | null
@@ -77,6 +78,7 @@ export async function actualizarGestion(input: {
 
   const actualizacion: Record<string, unknown> = { updated_by: actorId }
   if (campos.citaFuturaManual !== undefined) actualizacion.cita_futura_manual = campos.citaFuturaManual
+  if (campos.citaFuturaFecha !== undefined) actualizacion.cita_futura_fecha = campos.citaFuturaFecha
   if (campos.gestionRecontacto !== undefined) actualizacion.gestion_recontacto = campos.gestionRecontacto
   if (campos.proximoIntento !== undefined) actualizacion.proximo_intento = campos.proximoIntento
   if (campos.notas !== undefined) actualizacion.notas = campos.notas

@@ -41,6 +41,7 @@ export interface PacienteSeguimiento {
   podologo_estudio: string | null
   // columnas de gestión manual, tal cual en seguimiento_gestion
   cita_futura_manual: boolean
+  cita_futura_fecha: string | null
   gestion_recontacto: SeguimientoGestionEstado
   proximo_intento: string | null
   notas: string | null
@@ -163,6 +164,7 @@ export function calcularSeguimiento(
       prioridad,
       podologo_estudio: podologoEstudio,
       cita_futura_manual: gestion?.cita_futura_manual ?? false,
+      cita_futura_fecha: gestion?.cita_futura_fecha ?? null,
       gestion_recontacto: gestion?.gestion_recontacto ?? 'PENDIENTE',
       proximo_intento: gestion?.proximo_intento ?? null,
       notas: gestion?.notas ?? null,

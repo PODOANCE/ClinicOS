@@ -28,6 +28,7 @@ const GESTION_LABEL: Record<SeguimientoGestionEstado, string> = {
 
 type FiltroEstado = 'TODOS' | 'SIN_CITA' | 'CITADA'
 type FiltroPrioridad = 'TODAS' | 'SIN_REVISION' | 'VENCIDA' | 'AL_DIA'
+type OrdenPor = 'PRIORIDAD' | 'ESTUDIO_RECIENTE' | 'ESTUDIO_ANTIGUO'
 
 function badgeEstado(estado: string) {
   if (estado === 'Revisión citada') return 'bg-emerald-100 text-emerald-800'
@@ -63,6 +64,8 @@ export default function SeguimientoPage() {
   const [filtroPodologo, setFiltroPodologo] = useState<string>('TODOS')
   const [busqueda, setBusqueda] = useState('')
   const [mostrarResumen, setMostrarResumen] = useState(false)
+  const [ordenPor, setOrdenPor] = useState<OrdenPor>('PRIORIDAD')
+  const [aviso, setAviso] = useState<string | null>(null)
 
   const [importando, setImportando] = useState(false)
   const [resultadoImport, setResultadoImport] = useState<string | null>(null)
@@ -120,16 +123,25 @@ export default function SeguimientoPage() {
       lista = lista.filter((p) => p.nombre_mostrar.toUpperCase().includes(q))
     }
     return [...lista].sort((a, b) => {
+      if (ordenPor === 'ESTUDIO_RECIENTE' || ordenPor === 'ESTUDIO_ANTIGUO') {
+        const fa = a.primer_estudio ?? ''
+        const fb = b.primer_estudio ?? ''
+        if (fa === fb) return 0
+        if (fa === '') return 1 // sin fecha de estudio, al final
+        if (fb === '') return -1
+        return ordenPor === 'ESTUDIO_RECIENTE' ? fb.localeCompare(fa) : fa.localeCompare(fb)
+      }
       const diff = ORDEN_PRIORIDAD[a.prioridad] - ORDEN_PRIORIDAD[b.prioridad]
       if (diff !== 0) return diff
       return (b.meses_desde_ultima ?? 0) - (a.meses_desde_ultima ?? 0)
     })
-  }, [pacientes, filtroEstado, filtroPrioridad, filtroPodologo, busqueda])
+  }, [pacientes, filtroEstado, filtroPrioridad, filtroPodologo, busqueda, ordenPor])
 
   async function handleActualizarGestion(
     p: PacienteSeguimiento,
     campos: Partial<{
       citaFuturaManual: boolean
+      citaFuturaFecha: string | null
       gestionRecontacto: SeguimientoGestionEstado
       proximoIntento: string | null
       notas: string | null
@@ -144,6 +156,14 @@ export default function SeguimientoPage() {
         actorId: user.id,
         ...campos,
       })
+      if (campos.citaFuturaManual !== undefined) {
+        setAviso(
+          campos.citaFuturaManual
+            ? `${p.nombre_mostrar}: cita futura el ${campos.citaFuturaFecha} → pasa a "Revisión citada" y desaparece del filtro "Sin cita".`
+            : `${p.nombre_mostrar}: fecha borrada → vuelve a "Sin cita - recontactar".`
+        )
+        setTimeout(() => setAviso(null), 6000)
+      }
       await cargar()
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Error guardando el cambio')
@@ -244,6 +264,13 @@ export default function SeguimientoPage() {
         </div>
       </div>
 
+      {aviso && (
+        <div className="bg-blue-50 border border-blue-200 text-blue-800 text-sm rounded-md px-4 py-2 flex items-center justify-between gap-3">
+          <span>ℹ️ {aviso}</span>
+          <button onClick={() => setAviso(null)} className="text-blue-400 hover:text-blue-700 flex-shrink-0">✕</button>
+        </div>
+      )}
+
       {/* Filtros */}
       <div className="flex flex-wrap items-center gap-2">
         {(['SIN_CITA', 'CITADA', 'TODOS'] as FiltroEstado[]).map((f) => (
@@ -281,6 +308,17 @@ export default function SeguimientoPage() {
           {podologos.map((p) => (
             <option key={p} value={p}>{p}</option>
           ))}
+        </select>
+
+        <select
+          value={ordenPor}
+          onChange={(e) => setOrdenPor(e.target.value as OrdenPor)}
+          className="px-3 py-1.5 rounded-full text-sm border border-gray-300 bg-white"
+          title="Orden de la tabla"
+        >
+          <option value="PRIORIDAD">Orden: por prioridad</option>
+          <option value="ESTUDIO_RECIENTE">Orden: 1er estudio, más recientes primero</option>
+          <option value="ESTUDIO_ANTIGUO">Orden: 1er estudio, más antiguos primero</option>
         </select>
 
         <input
@@ -338,12 +376,13 @@ export default function SeguimientoPage() {
               <th className="px-4 py-2 font-medium">Paciente</th>
               <th className="px-3 py-2 font-medium">Podólogo</th>
               <th className="px-3 py-2 font-medium">Tipo</th>
+              <th className="px-3 py-2 font-medium">1er estudio</th>
               <th className="px-3 py-2 font-medium">Última cita</th>
               <th className="px-3 py-2 font-medium">Meses</th>
               <th className="px-3 py-2 font-medium">Nº rev.</th>
               <th className="px-3 py-2 font-medium">Estado</th>
               <th className="px-3 py-2 font-medium">Prioridad</th>
-              <th className="px-3 py-2 font-medium">Cita futura (manual)</th>
+              <th className="px-3 py-2 font-medium">Cita futura (fecha, manual)</th>
               <th className="px-3 py-2 font-medium">Gestión recontacto</th>
               <th className="px-3 py-2 font-medium">Próximo intento</th>
               <th className="px-3 py-2 font-medium">Notas</th>
@@ -355,6 +394,7 @@ export default function SeguimientoPage() {
                 <td className="px-4 py-2 font-medium text-gray-900 whitespace-nowrap">{p.nombre_mostrar}</td>
                 <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{p.podologo_estudio ?? '—'}</td>
                 <td className="px-3 py-2 text-gray-600">{p.tipo}</td>
+                <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{p.primer_estudio ?? '—'}</td>
                 <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{p.ultima_cita ?? '—'}</td>
                 <td className="px-3 py-2 text-gray-600">{p.meses_desde_ultima ?? '—'}</td>
                 <td className="px-3 py-2 text-gray-600">{p.num_revisiones}</td>
@@ -369,12 +409,38 @@ export default function SeguimientoPage() {
                   </span>
                 </td>
                 <td className="px-3 py-2">
-                  <input
-                    type="checkbox"
-                    checked={p.cita_futura_manual}
-                    disabled={!puedeEditar}
-                    onChange={(e) => handleActualizarGestion(p, { citaFuturaManual: e.target.checked })}
-                  />
+                  {p.cita_futura_fecha ? (
+                    <input
+                      type="date"
+                      defaultValue={p.cita_futura_fecha}
+                      disabled={!puedeEditar}
+                      onChange={(e) => {
+                        const valor = e.target.value || null
+                        handleActualizarGestion(p, { citaFuturaManual: !!valor, citaFuturaFecha: valor })
+                      }}
+                      className="border border-gray-300 rounded px-1.5 py-1 text-xs"
+                      title="Cambia la fecha si la cita se mueve, o bórrala para quitarla."
+                    />
+                  ) : (
+                    <input
+                      type="date"
+                      disabled={!puedeEditar}
+                      ref={(el) => {
+                        if (el) el.value = ''
+                      }}
+                      onFocus={(e) => {
+                        // Al hacer foco (clic o tab) abre el selector directamente,
+                        // en vez de dejar una caja vacía a la espera de escribir.
+                        e.target.showPicker?.()
+                      }}
+                      onChange={(e) => {
+                        const valor = e.target.value || null
+                        if (valor) handleActualizarGestion(p, { citaFuturaManual: true, citaFuturaFecha: valor })
+                      }}
+                      className="border border-dashed border-gray-300 rounded px-1.5 py-1 text-xs text-gray-400"
+                      title="Clic para elegir la fecha de la cita futura acordada por teléfono."
+                    />
+                  )}
                 </td>
                 <td className="px-3 py-2">
                   <select
@@ -413,7 +479,7 @@ export default function SeguimientoPage() {
             ))}
             {pacientesFiltrados.length === 0 && (
               <tr>
-                <td colSpan={12} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={13} className="px-4 py-8 text-center text-gray-400">
                   No hay pacientes que coincidan con estos filtros.
                 </td>
               </tr>

@@ -300,6 +300,7 @@ export interface SeguimientoGestion {
   paciente_clave: string;
   nombre_mostrar: string;
   cita_futura_manual: boolean;
+  cita_futura_fecha: string | null;
   gestion_recontacto: SeguimientoGestionEstado;
   proximo_intento: string | null;
   notas: string | null;
