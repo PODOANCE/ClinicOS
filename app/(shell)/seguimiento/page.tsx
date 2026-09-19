@@ -25,6 +25,14 @@ function enlaceWhatsapp(telefono: string, mensaje: string): string {
   return `https://wa.me/${conPrefijo}?text=${encodeURIComponent(mensaje)}`
 }
 
+// Todas las fechas de esta página vienen en ISO (aaaa-mm-dd) de la base de
+// datos; se muestran en DD/MM/AAAA para que no haya lío con el formato.
+function fechaDDMMAAAA(iso: string | null): string {
+  if (!iso) return '—'
+  const [y, m, d] = iso.slice(0, 10).split('-')
+  return `${d}/${m}/${y}`
+}
+
 const DENIM = '#183B5F'
 const PUMPKIN = '#F18852'
 
@@ -280,7 +288,7 @@ export default function SeguimientoPage() {
       if (campos.citaFuturaManual !== undefined) {
         setAviso(
           campos.citaFuturaManual
-            ? `${p.nombre_mostrar}: cita futura el ${campos.citaFuturaFecha} → pasa a "Revisión citada" y desaparece del filtro "Sin cita".`
+            ? `${p.nombre_mostrar}: cita futura el ${fechaDDMMAAAA(campos.citaFuturaFecha ?? null)} → pasa a "Revisión citada" y desaparece del filtro "Sin cita".`
             : `${p.nombre_mostrar}: fecha borrada → vuelve a "Sin cita - recontactar".`
         )
         setTimeout(() => setAviso(null), 6000)
@@ -684,16 +692,16 @@ export default function SeguimientoPage() {
                     <span
                       className="text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
                       style={{ backgroundColor: '#FEF1EA', color: PUMPKIN }}
-                      title={`Señal de plantillas: ${p.fecha_entrega_plantillas}`}
+                      title={`Señal de plantillas: ${fechaDDMMAAAA(p.fecha_entrega_plantillas)}`}
                     >
-                      Sí ({p.fecha_entrega_plantillas})
+                      Sí ({fechaDDMMAAAA(p.fecha_entrega_plantillas)})
                     </span>
                   ) : (
                     <span className="text-gray-400">—</span>
                   )}
                 </td>
-                <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{p.primer_estudio ?? '—'}</td>
-                <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{p.ultima_cita ?? '—'}</td>
+                <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fechaDDMMAAAA(p.primer_estudio)}</td>
+                <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fechaDDMMAAAA(p.ultima_cita)}</td>
                 <td className="px-3 py-2 text-gray-600">{p.meses_desde_ultima ?? '—'}</td>
                 <td className="px-3 py-2 text-gray-600">{p.num_revisiones}</td>
                 <td className="px-3 py-2">
