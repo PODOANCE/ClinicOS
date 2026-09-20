@@ -278,6 +278,7 @@ export interface SeguimientoCita {
   precio: number | null;
   estado_cita: string | null;
   huella: string;
+  es_seguimiento: boolean;
   archivo_importacion_id: string | null;
   centro_id: string;
   activo: boolean;
@@ -317,8 +318,9 @@ export interface SeguimientoGestion {
 // Recordatorios por WhatsApp: plantilla editable por el personal (envío
 // manual, sin API de pago). CITA_MANANA usa {nombre} {fecha} {hora}
 // {profesional} (ver lib/services/recordatorios-generador.ts); RECONTACTO
-// (pacientes de Seguimiento sin cita futura) usa solo {nombre}.
-export type RecordatorioTipo = 'CITA_MANANA' | 'RECONTACTO';
+// (pacientes de Seguimiento sin cita futura) y QUIROPODIA (pacientes sin
+// visita de quiropodia en más de un año) usan solo {nombre}.
+export type RecordatorioTipo = 'CITA_MANANA' | 'RECONTACTO' | 'QUIROPODIA';
 
 export interface RecordatorioPlantilla {
   centro_id: string;

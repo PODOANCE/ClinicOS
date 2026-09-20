@@ -1,6 +1,9 @@
 /**
- * Importación de citas de biomecánica desde exports de Organízate
- * (Estadísticas > Citas - General, exportado a Excel).
+ * Importación de citas desde exports de Organízate (Estadísticas > Citas -
+ * General, exportado a Excel). Guarda TODOS los tratamientos de cada
+ * paciente (no solo biomecánica) para poder calcular su gasto total; cada
+ * fila queda marcada con `es_seguimiento` para que el panel de revisiones de
+ * biomecánica siga viendo exactamente lo mismo que antes.
  *
  * Desacoplado de Next.js/Supabase: recibe un Buffer y devuelve citas
  * normalizadas listas para insertar. Igual que en la plantilla Excel
@@ -11,6 +14,7 @@
 
 import { createHash } from 'node:crypto'
 import readXlsxFile from 'read-excel-file/node'
+import { normalizarClavePaciente } from '@/lib/services/paciente-clave'
 
 export interface CitaNormalizada {
   fecha: string
@@ -23,6 +27,11 @@ export interface CitaNormalizada {
   precio: number | null
   estado_cita: string | null
   huella: string
+  // true si el tratamiento es de biomecánica/plantillas/revisión (lo que
+  // alimenta el panel de Seguimiento); false para el resto (Quiropodia,
+  // Papiloma, Cura...), que se guarda igual para poder calcular el gasto
+  // total del paciente (LTV) aunque no cuente para ese panel.
+  es_seguimiento: boolean
 }
 
 export interface ErrorFila {
@@ -34,7 +43,7 @@ export interface ResultadoParseoCitas {
   citas: CitaNormalizada[]
   errores: ErrorFila[]
   totalFilas: number
-  descartadasNoBiomecanica: number
+  otrosServicios: number
 }
 
 export class ErrorArchivoSeguimiento extends Error {
@@ -140,9 +149,10 @@ function celda(fila: Fila, indice: number): unknown {
 
 // El export de Organízate ("Citas - General") trae la agenda de toda la
 // clínica (papiloma, cirugía ungueal, cura, taller...), no solo
-// biomecánica. Solo nos interesa lo que alimenta el seguimiento de
-// revisiones: estudios/revisiones de biomecánica y todo lo relacionado con
-// plantillas (señal, entrega, modificación).
+// biomecánica. Se guarda todo (para poder calcular el gasto total de cada
+// paciente), pero solo esto alimenta el panel de seguimiento de revisiones:
+// estudios/revisiones de biomecánica y todo lo relacionado con plantillas
+// (señal, entrega, modificación).
 function esTratamientoDeSeguimiento(tratamiento: string): boolean {
   const t = tratamiento.toUpperCase()
   return t.includes('BIOMEC') || t.includes('PLANTILLA') || t.includes('REVISI')
@@ -242,7 +252,7 @@ export async function parsearExportOrganizate(contenido: Buffer): Promise<Result
 
   const errores: ErrorFila[] = []
   const citas: CitaNormalizada[] = []
-  let descartadasNoBiomecanica = 0
+  let otrosServicios = 0
 
   filas.forEach((fila, indice) => {
     const numeroFila = indice + 1
@@ -267,12 +277,10 @@ export async function parsearExportOrganizate(contenido: Buffer): Promise<Result
       errores.push({ fila: numeroFila, motivo: 'Tratamiento vacío' })
       return
     }
-    if (!esTratamientoDeSeguimiento(tratamiento)) {
-      descartadasNoBiomecanica += 1
-      return
-    }
+    const esSeguimiento = esTratamientoDeSeguimiento(tratamiento)
+    if (!esSeguimiento) otrosServicios += 1
 
-    const pacienteClave = paciente.toUpperCase().replace(/\s+/g, ' ')
+    const pacienteClave = normalizarClavePaciente(paciente)
     const hora = textoCelda(celda(fila, cabecera!.hora))
     const agenda = textoCelda(celda(fila, cabecera!.agenda))
 
@@ -287,8 +295,9 @@ export async function parsearExportOrganizate(contenido: Buffer): Promise<Result
       precio: parsearPrecio(celda(fila, cabecera!.precio)),
       estado_cita: textoCelda(celda(fila, cabecera!.estado)),
       huella: calcularHuellaCita(fecha, hora, agenda, pacienteClave, tratamiento),
+      es_seguimiento: esSeguimiento,
     })
   })
 
-  return { citas, errores, totalFilas: citas.length + errores.length + descartadasNoBiomecanica, descartadasNoBiomecanica }
+  return { citas, errores, totalFilas: citas.length + errores.length, otrosServicios }
 }

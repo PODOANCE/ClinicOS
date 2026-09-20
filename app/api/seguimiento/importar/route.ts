@@ -108,6 +108,7 @@ export async function POST(request: NextRequest) {
       precio: c.precio,
       estado_cita: c.estado_cita,
       huella: c.huella,
+      es_seguimiento: c.es_seguimiento,
       centro_id: usuario.centro_id,
       created_by: user.id,
       updated_by: user.id,
@@ -131,9 +132,13 @@ export async function POST(request: NextRequest) {
       insertados += data?.length ?? 0
     }
 
-    // Crea una fila de gestión vacía para cada paciente nuevo detectado.
+    // Crea una fila de gestión vacía para cada paciente nuevo detectado —
+    // solo para quien tiene alguna cita de seguimiento (biomecánica/
+    // plantillas/revisión); el resto de tratamientos se guarda igual, pero
+    // no debe hacer aparecer pacientes ajenos en el panel de recontacto.
     const pacientesUnicos = new Map<string, string>()
     for (const c of parseo.citas) {
+      if (!c.es_seguimiento) continue
       if (!pacientesUnicos.has(c.paciente_clave)) pacientesUnicos.set(c.paciente_clave, c.paciente_raw)
     }
     const filasGestion = Array.from(pacientesUnicos.entries()).map(([clave, nombre]) => ({
@@ -166,7 +171,7 @@ export async function POST(request: NextRequest) {
       insertadas: insertados,
       yaExistentes: filas.length - insertados,
       pacientesNuevos,
-      descartadasNoBiomecanica: parseo.descartadasNoBiomecanica,
+      otrosServicios: parseo.otrosServicios,
       errores: parseo.errores,
     })
   } catch (error) {

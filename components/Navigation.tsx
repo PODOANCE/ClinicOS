@@ -16,7 +16,7 @@ export function Navigation() {
   const [puedeVerLeads, setPuedeVerLeads] = useState(false)
   const [puedeVerPanel, setPuedeVerPanel] = useState(false)
   const [puedeVerSeguimiento, setPuedeVerSeguimiento] = useState(false)
-  const [puedeVerRecordatorios, setPuedeVerRecordatorios] = useState(false)
+  const [puedeVerHerramientasAdmin, setPuedeVerHerramientasAdmin] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -27,8 +27,8 @@ export function Navigation() {
       setPuedeVerLeads(canUserAccess(roles, 'Leads', 'ver'))
       setPuedeVerPanel(canUserAccess(roles, 'PanelControl', 'ver'))
       setPuedeVerSeguimiento(canUserAccess(roles, 'Seguimiento', 'ver'))
-      // Recordatorios maneja teléfonos de pacientes: solo administración, no podólogos/ortopedas.
-      setPuedeVerRecordatorios(canUserAccess(roles, 'Seguimiento', 'ver') && esRolAdministracion(roles))
+      // Recordatorios y Quiropodia manejan teléfonos de pacientes: solo administración, no podólogos/ortopedas.
+      setPuedeVerHerramientasAdmin(canUserAccess(roles, 'Seguimiento', 'ver') && esRolAdministracion(roles))
     })
   }, [user])
 
@@ -40,7 +40,8 @@ export function Navigation() {
     ...(puedeVerConciliacion ? [{ nombre: 'Conciliación', href: '/conciliacion' }] : []),
     ...(puedeVerLeads ? [{ nombre: 'Leads', href: '/leads' }] : []),
     ...(puedeVerSeguimiento ? [{ nombre: 'Seguimiento', href: '/seguimiento' }] : []),
-    ...(puedeVerRecordatorios ? [{ nombre: 'Recordatorios', href: '/recordatorios' }] : []),
+    ...(puedeVerHerramientasAdmin ? [{ nombre: 'Recordatorios', href: '/recordatorios' }] : []),
+    ...(puedeVerHerramientasAdmin ? [{ nombre: 'Quiropodia', href: '/quiropodia' }] : []),
     ...(puedeVerPanel ? [{ nombre: 'Panel de Control', href: '/panel' }] : []),
   ]
 

@@ -16,18 +16,15 @@ export function createClient() {
       }
     )
 
-    // Manejar error de JWT futuro
-    supabaseClient.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        // Asegurar que la sesión es válida
-        const { error } = await supabaseClient!.auth.refreshSession()
-        if (error) {
-          console.warn('Error refreshing session:', error)
-          // Limpiar sesión inválida
-          await supabaseClient!.auth.signOut()
-        }
-      }
-    })
+    // Ojo: no forzar aquí un refreshSession() en 'SIGNED_IN' (se probó y se
+    // quitó). Ese evento se dispara también al restaurar la sesión guardada
+    // en cada carga de página, justo cuando la página ya está lanzando sus
+    // propias consultas paginadas — el refresh en paralelo puede dejar una
+    // petición sin token válido a mitad de vuelo y esa página vuelve vacía
+    // en silencio (sin error), truncando resultados. autoRefreshToken ya
+    // renueva el token a tiempo por su cuenta sin competir con nada;
+    // withJWTRetry (ver stock.ts) es el sitio correcto para reaccionar a un
+    // error real de JWT, no un refresh preventivo en cada sign-in.
   }
   return supabaseClient
 }

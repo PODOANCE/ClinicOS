@@ -14,6 +14,10 @@ import type { SeguimientoCita, SeguimientoGestion, SeguimientoGestionEstado } fr
 // que paginar con .range() y unir las páginas.
 const TAMANO_PAGINA = 1000
 
+// Solo citas de biomecánica/plantillas/revisión: es lo único que alimenta
+// el panel de Seguimiento. seguimiento_citas también guarda el resto de
+// tratamientos (para el gasto total por paciente), pero esos no deben
+// entrar aquí — usa getHistorialPaciente() para el histórico completo.
 export async function getSeguimientoCitas(): Promise<SeguimientoCita[]> {
   const supabase = createClient()
   const todas: SeguimientoCita[] = []
@@ -24,6 +28,7 @@ export async function getSeguimientoCitas(): Promise<SeguimientoCita[]> {
       .from('seguimiento_citas')
       .select('*')
       .eq('activo', true)
+      .eq('es_seguimiento', true)
       .order('fecha', { ascending: false })
       .range(desde, desde + TAMANO_PAGINA - 1)
 
@@ -37,6 +42,53 @@ export async function getSeguimientoCitas(): Promise<SeguimientoCita[]> {
   }
 
   return todas
+}
+
+// Citas de Quiropodia de todos los pacientes (para el aviso de recontacto
+// anual) — filtra en servidor por tratamiento en vez de traer toda la tabla.
+export async function getCitasQuiropodia(): Promise<SeguimientoCita[]> {
+  const supabase = createClient()
+  const todas: SeguimientoCita[] = []
+  let desde = 0
+
+  for (;;) {
+    const { data, error } = await supabase
+      .from('seguimiento_citas')
+      .select('*')
+      .eq('activo', true)
+      .ilike('tratamiento', '%quiropodia%')
+      .range(desde, desde + TAMANO_PAGINA - 1)
+
+    if (error) {
+      console.error('[getCitasQuiropodia] Error:', error.message)
+      throw error
+    }
+    todas.push(...((data as SeguimientoCita[]) || []))
+    if (!data || data.length < TAMANO_PAGINA) break
+    desde += TAMANO_PAGINA
+  }
+
+  return todas
+}
+
+// Histórico completo de un paciente (todos los tratamientos, no solo
+// biomecánica) para la ficha única de paciente: línea temporal y gasto
+// total. A diferencia de getSeguimientoCitas(), no filtra por
+// es_seguimiento — aquí interesa todo lo que se le ha hecho y cobrado.
+export async function getHistorialPaciente(pacienteClave: string): Promise<SeguimientoCita[]> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('seguimiento_citas')
+    .select('*')
+    .eq('activo', true)
+    .eq('paciente_clave', pacienteClave)
+    .order('fecha', { ascending: false })
+
+  if (error) {
+    console.error('[getHistorialPaciente] Error:', error.message)
+    throw error
+  }
+  return (data as SeguimientoCita[]) || []
 }
 
 export async function getSeguimientoGestion(): Promise<SeguimientoGestion[]> {
@@ -60,6 +112,23 @@ export async function getSeguimientoGestion(): Promise<SeguimientoGestion[]> {
   }
 
   return todas
+}
+
+// Fila de gestión de un paciente concreto (solo existe si alguna vez tuvo
+// una cita de seguimiento) — para la ficha única de paciente.
+export async function getGestionPorClave(pacienteClave: string): Promise<SeguimientoGestion | null> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('seguimiento_gestion')
+    .select('*')
+    .eq('paciente_clave', pacienteClave)
+    .maybeSingle()
+
+  if (error) {
+    console.error('[getGestionPorClave] Error:', error.message)
+    throw error
+  }
+  return data as SeguimientoGestion | null
 }
 
 export async function actualizarGestion(input: {

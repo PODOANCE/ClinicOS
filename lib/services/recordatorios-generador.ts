@@ -12,6 +12,7 @@
  */
 
 import readXlsxFile from 'read-excel-file/node'
+import { normalizarClavePaciente } from '@/lib/services/paciente-clave'
 
 export interface MensajeRecordatorio {
   paciente: string
@@ -151,10 +152,6 @@ function celda(fila: Fila, indice: number): unknown {
 
 // Misma normalización que paciente_clave en pacientes-telefono-importacion.ts,
 // para poder cruzar el nombre del export de citas con el listado guardado.
-function normalizarClavePaciente(nombreCompleto: string): string {
-  return nombreCompleto.trim().replace(/\s+/g, ' ').toUpperCase()
-}
-
 function normalizarTelefono(valor: string): string | null {
   const digitos = valor.replace(/[^\d+]/g, '')
   if (digitos.length < 9) return null

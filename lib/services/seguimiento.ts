@@ -24,6 +24,29 @@ const MESES_VENCIDA_NINO = 8
 const MESES_VENCIDA_ADULTO = 14
 const PALABRA_SENAL = 'señal' // cita de "señal" = paga y agenda la entrega de las plantillas
 
+export function enlaceWhatsapp(telefono: string, mensaje: string): string {
+  const digitos = telefono.replace(/[^\d]/g, '')
+  const conPrefijo = digitos.length === 9 ? `34${digitos}` : digitos
+  return `https://wa.me/${conPrefijo}?text=${encodeURIComponent(mensaje)}`
+}
+
+// Todas las fechas de Seguimiento vienen en ISO (aaaa-mm-dd) de la base de
+// datos; se muestran en DD/MM/AAAA para que no haya lío con el formato.
+export function fechaDDMMAAAA(iso: string | null): string {
+  if (!iso) return '—'
+  const [y, m, d] = iso.slice(0, 10).split('-')
+  return `${d}/${m}/${y}`
+}
+
+export const GESTION_LABEL: Record<SeguimientoGestionEstado, string> = {
+  PENDIENTE: 'Pendiente',
+  LLAMADO_NO_CONTESTA: 'Llamada - no contesta',
+  CANCELA_TODO_OK: 'Llamada - cancela la revisión (todo ok)',
+  RECHAZA: 'Llamada - rechaza la revisión',
+  CITA_AGENDADA: 'Cita agendada',
+  VOLVER_A_LLAMAR: 'Volver a llamar',
+}
+
 export type SeguimientoEstado = 'Revisión citada' | 'SIN CITA - recontactar'
 export type SeguimientoPrioridad = 'Sin revisión previa' | 'VENCIDA' | 'Al día' | '—'
 export type SeguimientoTipo = 'Infantil' | 'Adulto' | '—'
@@ -79,13 +102,13 @@ function esSenalPlantillas(tratamiento: string): boolean {
   return contieneTexto(tratamiento, PALABRA_SENAL) && contieneTexto(tratamiento, 'plantilla')
 }
 
-function mesesEntre(desde: Date, hasta: Date): number {
+export function mesesEntre(desde: Date, hasta: Date): number {
   let meses = (hasta.getFullYear() - desde.getFullYear()) * 12 + (hasta.getMonth() - desde.getMonth())
   if (hasta.getDate() < desde.getDate()) meses -= 1
   return meses
 }
 
-function aFecha(iso: string): Date {
+export function aFecha(iso: string): Date {
   return new Date(iso + 'T00:00:00')
 }
 

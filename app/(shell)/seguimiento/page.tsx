@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
 import { useUser } from '@/lib/contexts/UserContext'
 import { createClient } from '@/lib/supabase/browser'
 import { getUserCentro } from '@/lib/supabase/queries/tasks'
@@ -13,37 +14,17 @@ import {
   calcularSeguimiento,
   calcularResumen,
   calcularResumenPorPodologo,
+  fechaDDMMAAAA,
+  GESTION_LABEL,
+  enlaceWhatsapp,
   type PacienteSeguimiento,
 } from '@/lib/services/seguimiento'
 import type { SeguimientoCita, SeguimientoGestion, SeguimientoGestionEstado, Rol } from '@/lib/types/models'
 
 // Mismo criterio que wa.me: sin "+" ni espacios, con prefijo de país (se
 // asume España si el número guardado no trae ya uno).
-function enlaceWhatsapp(telefono: string, mensaje: string): string {
-  const digitos = telefono.replace(/[^\d]/g, '')
-  const conPrefijo = digitos.length === 9 ? `34${digitos}` : digitos
-  return `https://wa.me/${conPrefijo}?text=${encodeURIComponent(mensaje)}`
-}
-
-// Todas las fechas de esta página vienen en ISO (aaaa-mm-dd) de la base de
-// datos; se muestran en DD/MM/AAAA para que no haya lío con el formato.
-function fechaDDMMAAAA(iso: string | null): string {
-  if (!iso) return '—'
-  const [y, m, d] = iso.slice(0, 10).split('-')
-  return `${d}/${m}/${y}`
-}
-
 const DENIM = '#183B5F'
 const PUMPKIN = '#F18852'
-
-const GESTION_LABEL: Record<SeguimientoGestionEstado, string> = {
-  PENDIENTE: 'Pendiente',
-  LLAMADO_NO_CONTESTA: 'Llamada - no contesta',
-  CANCELA_TODO_OK: 'Llamada - cancela la revisión (todo ok)',
-  RECHAZA: 'Llamada - rechaza la revisión',
-  CITA_AGENDADA: 'Cita agendada',
-  VOLVER_A_LLAMAR: 'Volver a llamar',
-}
 
 // Precio real de una revisión (mismo que en el Excel/Panel de Control):
 // cada vez que se marca "Cita agendada" es una revisión que hemos
@@ -337,7 +318,7 @@ export default function SeguimientoPage() {
 
       setResultadoImport(
         `Importadas ${data.insertadas} citas nuevas (${data.yaExistentes} ya existían), ${data.pacientesNuevos} pacientes nuevos.` +
-          (data.descartadasNoBiomecanica ? ` ${data.descartadasNoBiomecanica} filas de otros servicios (no biomecánica/plantillas) ignoradas.` : '') +
+          (data.otrosServicios ? ` ${data.otrosServicios} filas de otros servicios (no biomecánica/plantillas) guardadas para el gasto total, pero fuera de este panel.` : '') +
           (data.errores?.length ? ` ${data.errores.length} filas con error, revisadas.` : '')
       )
       await cargar()
@@ -688,7 +669,15 @@ export default function SeguimientoPage() {
           <tbody>
             {pacientesFiltrados.map((p) => (
               <tr key={p.paciente_clave} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-2 font-medium text-gray-900 whitespace-nowrap">{p.nombre_mostrar}</td>
+                <td className="px-4 py-2 font-medium whitespace-nowrap">
+                  <Link
+                    href={`/pacientes/${encodeURIComponent(p.paciente_clave)}`}
+                    className="text-gray-900 hover:underline"
+                    style={{ color: DENIM }}
+                  >
+                    {p.nombre_mostrar}
+                  </Link>
+                </td>
                 <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{p.podologo_estudio ?? '—'}</td>
                 <td className="px-3 py-2 text-gray-600">{p.tipo}</td>
                 <td className="px-3 py-2 text-gray-600">{edadesPorClave.get(p.paciente_clave) ?? '—'}</td>

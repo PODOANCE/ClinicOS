@@ -9,6 +9,7 @@
  */
 
 import readXlsxFile from 'read-excel-file/node'
+import { normalizarClavePaciente } from '@/lib/services/paciente-clave'
 
 export interface PacienteTelefonoNormalizado {
   paciente_clave: string
@@ -45,10 +46,6 @@ function textoCelda(valor: unknown): string | null {
 function normalizarEtiqueta(valor: unknown): string {
   const texto = textoCelda(valor)
   return texto ? texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase() : ''
-}
-
-export function normalizarClave(nombreCompleto: string): string {
-  return nombreCompleto.trim().replace(/\s+/g, ' ').toUpperCase()
 }
 
 function parsearLineaCSV(linea: string, separador: string): string[] {
@@ -186,8 +183,8 @@ export async function parsearListadoPacientes(contenido: Buffer): Promise<Pacien
     const edad = normalizarEdad(textoCelda(celda(fila, cabecera.edad)))
     if (!telefono && edad === null) continue // no aporta nada ni a Recordatorios ni a Seguimiento
 
-    porClave.set(normalizarClave(nombreCompleto), {
-      paciente_clave: normalizarClave(nombreCompleto),
+    porClave.set(normalizarClavePaciente(nombreCompleto), {
+      paciente_clave: normalizarClavePaciente(nombreCompleto),
       nombre_mostrar: nombreCompleto,
       telefono,
       edad,
