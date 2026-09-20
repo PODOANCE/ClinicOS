@@ -5,16 +5,21 @@ import Link from 'next/link'
 import { useUser } from '@/lib/contexts/UserContext'
 import { getUserCentro } from '@/lib/supabase/queries/tasks'
 import { getRolesUsuarioActual } from '@/lib/supabase/queries/stock'
-import { getCitasQuiropodia } from '@/lib/supabase/queries/seguimiento'
+import { getCitasQuiropodia, getUltimasVisitasPorPaciente } from '@/lib/supabase/queries/seguimiento'
 import { getRecordatoriosPlantilla, actualizarRecordatoriosPlantilla } from '@/lib/supabase/queries/recordatorios'
 import { getTelefonosPorClaves } from '@/lib/supabase/queries/pacientes-telefono'
 import { canUserAccess, esRolAdministracion } from '@/lib/permissions/validation'
-import { fechaDDMMAAAA, enlaceWhatsapp } from '@/lib/services/seguimiento'
+import { fechaDDMMAAAA, enlaceWhatsapp, mesesEntre, aFecha } from '@/lib/services/seguimiento'
 import { calcularQuiropodia, UMBRAL_MESES_QUIROPODIA, type PacienteQuiropodia } from '@/lib/services/quiropodia'
 import type { SeguimientoCita, Rol } from '@/lib/types/models'
 
 const DENIM = '#183B5F'
 const PUMPKIN = '#F18852'
+
+// Si estuvo en la clínica hace menos de esto (por otro motivo: plantillas,
+// láser...), se avisa para no decirle "hace tiempo que no te vemos" a
+// alguien que en realidad vino la semana pasada.
+const MESES_AVISO_VISITA_RECIENTE = 3
 
 const PLANTILLA_DEFECTO =
   'Hola {nombre} 👋, hace tiempo que no te vemos por Podología y Biomecánica Rivas para tu revisión de quiropodia. ¿Te viene bien que te agendemos una cita? Contesta a este mensaje y te lo organizamos. ¡Un saludo!'
@@ -25,6 +30,7 @@ export default function QuiropodiaPage() {
   const [centroId, setCentroId] = useState<string | null>(null)
   const [roles, setRoles] = useState<Rol[]>([])
   const [citas, setCitas] = useState<SeguimientoCita[]>([])
+  const [ultimasVisitas, setUltimasVisitas] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -45,14 +51,16 @@ export default function QuiropodiaPage() {
     if (!user) return
     try {
       setLoading(true)
-      const [ce, rls, cts] = await Promise.all([
+      const [ce, rls, cts, ultimas] = await Promise.all([
         getUserCentro(user.id),
         getRolesUsuarioActual(user.id),
         getCitasQuiropodia(),
+        getUltimasVisitasPorPaciente(),
       ])
       setCentroId(ce)
       setRoles(rls)
       setCitas(cts)
+      setUltimasVisitas(ultimas)
       if (ce) {
         const p = await getRecordatoriosPlantilla(ce, 'QUIROPODIA')
         setPlantilla(p?.texto ?? PLANTILLA_DEFECTO)
@@ -188,24 +196,43 @@ export default function QuiropodiaPage() {
             <thead>
               <tr className="text-left text-gray-500 border-b border-gray-100">
                 <th className="px-4 py-2 font-medium">Paciente</th>
-                <th className="px-3 py-2 font-medium">Última visita</th>
+                <th className="px-3 py-2 font-medium">Última cita quiropodia</th>
                 <th className="px-3 py-2 font-medium">Meses sin venir</th>
+                <th className="px-3 py-2 font-medium">Última vez en la clínica</th>
                 <th className="px-3 py-2 font-medium">Nº visitas</th>
               </tr>
             </thead>
             <tbody>
-              {pendientes.map((p) => (
-                <tr key={p.paciente_clave} className="border-b border-gray-50">
-                  <td className="px-4 py-2 font-medium">
-                    <Link href={`/pacientes/${encodeURIComponent(p.paciente_clave)}`} className="hover:underline" style={{ color: DENIM }}>
-                      {p.nombre_mostrar}
-                    </Link>
-                  </td>
-                  <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fechaDDMMAAAA(p.ultima_visita)}</td>
-                  <td className="px-3 py-2 text-gray-600">{p.meses_desde_ultima}</td>
-                  <td className="px-3 py-2 text-gray-600">{p.num_visitas}</td>
-                </tr>
-              ))}
+              {pendientes.map((p) => {
+                const ultimaClinica = ultimasVisitas.get(p.paciente_clave) ?? null
+                const mesesClinica = ultimaClinica ? mesesEntre(aFecha(ultimaClinica), new Date()) : null
+                const vinoHacePoco = mesesClinica !== null && mesesClinica < MESES_AVISO_VISITA_RECIENTE
+                return (
+                  <tr key={p.paciente_clave} className="border-b border-gray-50">
+                    <td className="px-4 py-2 font-medium">
+                      <Link href={`/pacientes/${encodeURIComponent(p.paciente_clave)}`} className="hover:underline" style={{ color: DENIM }}>
+                        {p.nombre_mostrar}
+                      </Link>
+                    </td>
+                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fechaDDMMAAAA(p.ultima_visita)}</td>
+                    <td className="px-3 py-2 text-gray-600">{p.meses_desde_ultima}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <span className={vinoHacePoco ? 'text-amber-700 font-semibold' : 'text-gray-600'}>
+                        {fechaDDMMAAAA(ultimaClinica)}
+                      </span>
+                      {vinoHacePoco && (
+                        <span
+                          className="ml-2 text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full"
+                          title="Estuvo en la clínica hace poco por otro motivo — revisa antes de decir que hace tiempo que no viene."
+                        >
+                          ⚠️ vino hace poco (otro motivo)
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-gray-600">{p.num_visitas}</td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         )}

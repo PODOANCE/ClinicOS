@@ -71,6 +71,37 @@ export async function getCitasQuiropodia(): Promise<SeguimientoCita[]> {
   return todas
 }
 
+// Última fecha de CUALQUIER visita por paciente (no solo Quiropodia) — para
+// no avisar de recontacto a alguien que en realidad estuvo hace poco en la
+// clínica por otro motivo (ej. plantillas, láser...). Solo trae
+// paciente_clave+fecha, no toda la fila, porque puede ser toda la tabla.
+export async function getUltimasVisitasPorPaciente(): Promise<Map<string, string>> {
+  const supabase = createClient()
+  const ultimaPorClave = new Map<string, string>()
+  let desde = 0
+
+  for (;;) {
+    const { data, error } = await supabase
+      .from('seguimiento_citas')
+      .select('paciente_clave, fecha')
+      .eq('activo', true)
+      .range(desde, desde + TAMANO_PAGINA - 1)
+
+    if (error) {
+      console.error('[getUltimasVisitasPorPaciente] Error:', error.message)
+      throw error
+    }
+    for (const fila of (data as { paciente_clave: string; fecha: string }[]) || []) {
+      const actual = ultimaPorClave.get(fila.paciente_clave)
+      if (!actual || fila.fecha > actual) ultimaPorClave.set(fila.paciente_clave, fila.fecha)
+    }
+    if (!data || data.length < TAMANO_PAGINA) break
+    desde += TAMANO_PAGINA
+  }
+
+  return ultimaPorClave
+}
+
 // Histórico completo de un paciente (todos los tratamientos, no solo
 // biomecánica) para la ficha única de paciente: línea temporal y gasto
 // total. A diferencia de getSeguimientoCitas(), no filtra por
