@@ -187,7 +187,7 @@ export default function DashboardPage() {
           <p className="text-gray-500 mt-1 text-sm">Bienvenido de nuevo a ClinicOS · {fraseDelDia()}</p>
         </div>
         {ahora && (
-          <div className="text-right flex-shrink-0">
+          <div className="text-right flex-shrink-0 ml-auto">
             <div className="text-sm font-semibold" style={{ color: DENIM }}>
               {fechaHoraFormateada(ahora).fecha}
             </div>
