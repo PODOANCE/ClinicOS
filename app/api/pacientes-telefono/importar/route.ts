@@ -12,7 +12,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { getAuthenticatedUser } from '@/lib/supabase/auth-helpers'
 import { getUserRoles } from '@/lib/permissions/admin-helpers'
-import { canUserAccess } from '@/lib/permissions/validation'
+import { canUserAccess, esRolAdministracion } from '@/lib/permissions/validation'
 import { ErrorArchivoPacientesTelefono, parsearListadoPacientes } from '@/lib/services/pacientes-telefono-importacion'
 
 const TAMANO_MAXIMO_BYTES = 8 * 1024 * 1024
@@ -28,7 +28,8 @@ export async function POST(request: NextRequest) {
     const supabase = createAdminClient()
 
     const roles = await getUserRoles(user.id, supabase)
-    if (!canUserAccess(roles, 'Seguimiento', 'editar')) {
+    // Maneja teléfonos de pacientes: solo administración, no podólogos/ortopedas.
+    if (!canUserAccess(roles, 'Seguimiento', 'editar') || !esRolAdministracion(roles)) {
       return NextResponse.json(
         { error: 'Sin permisos para importar teléfonos de pacientes', code: 'FORBIDDEN' },
         { status: 403 }

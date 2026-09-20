@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useUser } from '@/lib/contexts/UserContext'
 import { getRolesUsuarioActual } from '@/lib/supabase/queries/stock'
-import { canUserAccess } from '@/lib/permissions/validation'
+import { canUserAccess, esRolAdministracion } from '@/lib/permissions/validation'
 
 export function Navigation() {
   const pathname = usePathname()
@@ -16,6 +16,7 @@ export function Navigation() {
   const [puedeVerLeads, setPuedeVerLeads] = useState(false)
   const [puedeVerPanel, setPuedeVerPanel] = useState(false)
   const [puedeVerSeguimiento, setPuedeVerSeguimiento] = useState(false)
+  const [puedeVerRecordatorios, setPuedeVerRecordatorios] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -26,6 +27,8 @@ export function Navigation() {
       setPuedeVerLeads(canUserAccess(roles, 'Leads', 'ver'))
       setPuedeVerPanel(canUserAccess(roles, 'PanelControl', 'ver'))
       setPuedeVerSeguimiento(canUserAccess(roles, 'Seguimiento', 'ver'))
+      // Recordatorios maneja teléfonos de pacientes: solo administración, no podólogos/ortopedas.
+      setPuedeVerRecordatorios(canUserAccess(roles, 'Seguimiento', 'ver') && esRolAdministracion(roles))
     })
   }, [user])
 
@@ -37,7 +40,7 @@ export function Navigation() {
     ...(puedeVerConciliacion ? [{ nombre: 'Conciliación', href: '/conciliacion' }] : []),
     ...(puedeVerLeads ? [{ nombre: 'Leads', href: '/leads' }] : []),
     ...(puedeVerSeguimiento ? [{ nombre: 'Seguimiento', href: '/seguimiento' }] : []),
-    ...(puedeVerSeguimiento ? [{ nombre: 'Recordatorios', href: '/recordatorios' }] : []),
+    ...(puedeVerRecordatorios ? [{ nombre: 'Recordatorios', href: '/recordatorios' }] : []),
     ...(puedeVerPanel ? [{ nombre: 'Panel de Control', href: '/panel' }] : []),
   ]
 

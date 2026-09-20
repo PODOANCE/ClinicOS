@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/browser'
 import { getUserCentro } from '@/lib/supabase/queries/tasks'
 import { getRolesUsuarioActual } from '@/lib/supabase/queries/stock'
 import { getRecordatoriosPlantilla, actualizarRecordatoriosPlantilla } from '@/lib/supabase/queries/recordatorios'
-import { canUserAccess } from '@/lib/permissions/validation'
+import { canUserAccess, esRolAdministracion } from '@/lib/permissions/validation'
 import type { Rol } from '@/lib/types/models'
 
 const DENIM = '#183B5F'
@@ -75,8 +75,9 @@ export default function RecordatoriosPage() {
     }
   }
 
-  const puedeVer = canUserAccess(roles, 'Seguimiento', 'ver')
-  const puedeEditar = canUserAccess(roles, 'Seguimiento', 'editar')
+  // Maneja teléfonos de pacientes: solo administración, no podólogos/ortopedas.
+  const puedeVer = canUserAccess(roles, 'Seguimiento', 'ver') && esRolAdministracion(roles)
+  const puedeEditar = canUserAccess(roles, 'Seguimiento', 'editar') && esRolAdministracion(roles)
 
   async function handleGuardarPlantilla() {
     if (!user || !centroId) return

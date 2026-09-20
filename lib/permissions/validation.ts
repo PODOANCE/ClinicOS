@@ -94,3 +94,12 @@ export function getAreaPermissions(roles: Rol[], area: string): AreaPermiso | nu
 export function isSystemAdmin(roles: Rol[]): boolean {
   return roles.some(role => role.nombre === 'Administrador del sistema')
 }
+
+/**
+ * Personal de administración (recepción/gestión), a diferencia de podólogos
+ * u ortopedas. Se usa para restringir datos de contacto de pacientes
+ * (teléfonos) a quien gestiona la agenda, no a quien pasa consulta.
+ */
+export function esRolAdministracion(roles: Rol[]): boolean {
+  return roles.some(role => role.nombre === 'Administración' || role.nombre === 'Administrador del sistema')
+}

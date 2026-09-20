@@ -8,7 +8,7 @@ import { getSeguimientoCitas, getSeguimientoGestion, actualizarGestion } from '@
 import { getRolesUsuarioActual } from '@/lib/supabase/queries/stock'
 import { getRecordatoriosPlantilla, actualizarRecordatoriosPlantilla } from '@/lib/supabase/queries/recordatorios'
 import { getTelefonosPorClaves, getEdadesPorClaves } from '@/lib/supabase/queries/pacientes-telefono'
-import { canUserAccess } from '@/lib/permissions/validation'
+import { canUserAccess, esRolAdministracion } from '@/lib/permissions/validation'
 import {
   calcularSeguimiento,
   calcularResumen,
@@ -220,6 +220,9 @@ export default function SeguimientoPage() {
 
   const puedeVer = canUserAccess(roles, 'Seguimiento', 'ver')
   const puedeEditar = canUserAccess(roles, 'Seguimiento', 'editar')
+  // Solo administración (recepción/gestión) ve teléfonos y puede recontactar;
+  // podólogos y ortopedas ven el resto del panel de Seguimiento igual.
+  const puedeVerTelefonos = esRolAdministracion(roles)
 
   const pacientes = useMemo(() => calcularSeguimiento(citas, gestiones), [citas, gestiones])
   const resumen = useMemo(() => calcularResumen(pacientes), [pacientes])
@@ -538,23 +541,25 @@ export default function SeguimientoPage() {
           className="px-3 py-1.5 rounded-full text-sm border border-gray-300 flex-1 min-w-[160px]"
         />
 
-        <button
-          onClick={() => setMostrarRecontacto((v) => !v)}
-          className="text-xs font-medium underline decoration-dotted ml-auto"
-          style={{ color: PUMPKIN }}
-        >
-          {mostrarRecontacto ? 'Ocultar recontacto por WhatsApp' : '💬 Recontactar por WhatsApp'}
-        </button>
+        {puedeVerTelefonos && (
+          <button
+            onClick={() => setMostrarRecontacto((v) => !v)}
+            className="text-xs font-medium underline decoration-dotted ml-auto"
+            style={{ color: PUMPKIN }}
+          >
+            {mostrarRecontacto ? 'Ocultar recontacto por WhatsApp' : '💬 Recontactar por WhatsApp'}
+          </button>
+        )}
         <button
           onClick={() => setMostrarResumen((v) => !v)}
-          className="text-xs font-medium underline decoration-dotted"
+          className={`text-xs font-medium underline decoration-dotted${puedeVerTelefonos ? '' : ' ml-auto'}`}
           style={{ color: DENIM }}
         >
           {mostrarResumen ? 'Ocultar resumen por podólogo' : 'Ver resumen por podólogo'}
         </button>
       </div>
 
-      {mostrarRecontacto && (
+      {puedeVerTelefonos && mostrarRecontacto && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-3">
           <h3 className="text-sm font-bold" style={{ color: DENIM }}>Recontactar por WhatsApp</h3>
           <p className="text-xs text-gray-500">
