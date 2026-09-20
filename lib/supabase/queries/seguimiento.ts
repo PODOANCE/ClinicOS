@@ -102,6 +102,25 @@ export async function getUltimasVisitasPorPaciente(): Promise<Map<string, string
   return ultimaPorClave
 }
 
+export interface RankingPaciente {
+  paciente_clave: string
+  gasto: number
+  num_visitas: number
+}
+
+// Ranking de pacientes por gasto (año concreto o global si anio es null).
+// Solo Administrador del sistema: la RPC ya lo comprueba en el servidor,
+// para cualquier otro rol simplemente no devuelve filas.
+export async function getRankingPacientes(anio: number | null, limite = 20): Promise<RankingPaciente[]> {
+  const supabase = createClient() as any
+  const { data, error } = await supabase.rpc('get_ranking_pacientes', { p_anio: anio, p_limite: limite })
+  if (error) {
+    console.error('[getRankingPacientes] Error:', error.message)
+    throw error
+  }
+  return (data as RankingPaciente[]) || []
+}
+
 // Histórico completo de un paciente (todos los tratamientos, no solo
 // biomecánica) para la ficha única de paciente: línea temporal y gasto
 // total. A diferencia de getSeguimientoCitas(), no filtra por
