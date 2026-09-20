@@ -66,8 +66,7 @@ export interface StockProducto {
   stock_actual: number;
   stock_minimo: number;
   stock_critico: number;
-  proveedor_id: string | null;
-  proveedor_texto: string | null;
+  proveedores: string[];
   notas?: string | null;
   centro_id: string;
   activo: boolean;

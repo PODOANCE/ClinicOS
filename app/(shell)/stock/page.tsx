@@ -77,7 +77,7 @@ interface ProductoForm {
   unidad: string
   stock_minimo: number
   stock_critico: number
-  proveedor_texto: string
+  proveedores: string[]
   categoria_id: string
   stock_inicial: number
 }
@@ -87,9 +87,76 @@ const FORM_VACIO: ProductoForm = {
   unidad: '',
   stock_minimo: 0,
   stock_critico: 0,
-  proveedor_texto: '',
+  proveedores: [],
   categoria_id: '',
   stock_inicial: 0,
+}
+
+// Chips de proveedor con un campo para añadir uno nuevo (Enter o botón).
+// Un material puede tener varios: por si lo venden distintas empresas y
+// conviene comparar precio o agrupar pedido por proveedor.
+function SelectorProveedores({
+  proveedores,
+  onChange,
+}: {
+  proveedores: string[]
+  onChange: (nuevos: string[]) => void
+}) {
+  const [texto, setTexto] = useState('')
+
+  function anadir() {
+    const limpio = texto.trim()
+    if (!limpio || proveedores.includes(limpio)) {
+      setTexto('')
+      return
+    }
+    onChange([...proveedores, limpio])
+    setTexto('')
+  }
+
+  return (
+    <div>
+      <div className="flex flex-wrap gap-1 mb-1">
+        {proveedores.map((p) => (
+          <span
+            key={p}
+            className="inline-flex items-center gap-1 bg-gray-100 text-gray-700 text-xs px-2 py-0.5 rounded-full"
+          >
+            {p}
+            <button
+              type="button"
+              onClick={() => onChange(proveedores.filter((x) => x !== p))}
+              className="text-gray-400 hover:text-red-600"
+              aria-label={`Quitar proveedor ${p}`}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+      </div>
+      <div className="flex gap-1">
+        <input
+          className="flex-1 border border-gray-300 rounded px-2 py-1.5 text-sm"
+          placeholder="Añadir proveedor..."
+          value={texto}
+          onChange={(e) => setTexto(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              anadir()
+            }
+          }}
+        />
+        <button
+          type="button"
+          onClick={anadir}
+          className="px-2 py-1 text-xs rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
+        >
+          Añadir
+        </button>
+      </div>
+    </div>
+  )
 }
 
 export default function StockPage() {
@@ -272,7 +339,7 @@ export default function StockPage() {
       unidad: p.unidad,
       stock_minimo: p.stock_minimo,
       stock_critico: p.stock_critico,
-      proveedor_texto: p.proveedor_texto ?? '',
+      proveedores: p.proveedores,
       categoria_id: p.categoria_id,
       stock_inicial: 0,
     })
@@ -283,15 +350,20 @@ export default function StockPage() {
       alert('El stock crítico no puede ser mayor que el mínimo')
       return
     }
+    if (!user) return
     try {
-      const actualizado = await actualizarStockProducto(productoId, {
-        nombre: formEdicion.nombre,
-        unidad: formEdicion.unidad,
-        stock_minimo: formEdicion.stock_minimo,
-        stock_critico: formEdicion.stock_critico,
-        proveedor_texto: formEdicion.proveedor_texto.trim() || null,
-        categoria_id: formEdicion.categoria_id,
-      })
+      const actualizado = await actualizarStockProducto(
+        productoId,
+        {
+          nombre: formEdicion.nombre,
+          unidad: formEdicion.unidad,
+          stock_minimo: formEdicion.stock_minimo,
+          stock_critico: formEdicion.stock_critico,
+          proveedores: formEdicion.proveedores,
+          categoria_id: formEdicion.categoria_id,
+        },
+        user.id
+      )
       setProductos((prev) => prev.map((p) => (p.id === productoId ? actualizado : p)))
       setEditandoProductoId(null)
     } catch (err) {
@@ -318,18 +390,20 @@ export default function StockPage() {
       alert('El stock crítico no puede ser mayor que el mínimo')
       return
     }
-    if (!centroId) return
+    if (!centroId || !user) return
     try {
-      const creado = await crearStockProducto({
-        nombre: formAlta.nombre.trim(),
-        unidad: formAlta.unidad.trim(),
-        categoria_id: grupoId,
-        stock_minimo: formAlta.stock_minimo,
-        stock_critico: formAlta.stock_critico,
-        proveedor_texto: formAlta.proveedor_texto.trim() || null,
-        proveedor_id: null,
-        centro_id: centroId,
-      })
+      const creado = await crearStockProducto(
+        {
+          nombre: formAlta.nombre.trim(),
+          unidad: formAlta.unidad.trim(),
+          categoria_id: grupoId,
+          stock_minimo: formAlta.stock_minimo,
+          stock_critico: formAlta.stock_critico,
+          proveedores: formAlta.proveedores,
+          centro_id: centroId,
+        },
+        user.id
+      )
       let stockFinal = creado.stock_actual
       if (formAlta.stock_inicial > 0) {
         stockFinal = await llamarMovimiento(creado.id, 'ENTRADA', formAlta.stock_inicial)
@@ -405,9 +479,13 @@ export default function StockPage() {
     function agruparPorProveedor(items: StockProducto[]) {
       const grupos = new Map<string, StockProducto[]>()
       for (const p of items) {
-        const key = p.proveedor_texto?.trim() || 'Sin proveedor'
-        if (!grupos.has(key)) grupos.set(key, [])
-        grupos.get(key)!.push(p)
+        // Un material con varios proveedores aparece en el grupo de cada uno,
+        // para poder juntar el pedido y llegar al mínimo de envío gratis.
+        const claves = p.proveedores.length > 0 ? p.proveedores : ['Sin proveedor']
+        for (const key of claves) {
+          if (!grupos.has(key)) grupos.set(key, [])
+          grupos.get(key)!.push(p)
+        }
       }
       return Array.from(grupos.entries()).sort((a, b) => a[0].localeCompare(b[0], 'es'))
     }
@@ -676,6 +754,7 @@ export default function StockPage() {
                               min={0}
                               className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
                               value={formEdicion.stock_minimo}
+                              onFocus={(e) => e.target.select()}
                               onChange={(e) =>
                                 setFormEdicion((f) => ({ ...f, stock_minimo: parseInt(e.target.value) || 0 }))
                               }
@@ -688,19 +767,17 @@ export default function StockPage() {
                               min={0}
                               className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
                               value={formEdicion.stock_critico}
+                              onFocus={(e) => e.target.select()}
                               onChange={(e) =>
                                 setFormEdicion((f) => ({ ...f, stock_critico: parseInt(e.target.value) || 0 }))
                               }
                             />
                           </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Proveedor</label>
-                            <input
-                              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
-                              value={formEdicion.proveedor_texto}
-                              onChange={(e) =>
-                                setFormEdicion((f) => ({ ...f, proveedor_texto: e.target.value }))
-                              }
+                          <div className="col-span-2">
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Proveedores</label>
+                            <SelectorProveedores
+                              proveedores={formEdicion.proveedores}
+                              onChange={(nuevos) => setFormEdicion((f) => ({ ...f, proveedores: nuevos }))}
                             />
                           </div>
                           <div>
@@ -820,7 +897,8 @@ export default function StockPage() {
                       <div className="flex items-center justify-between gap-2 min-w-0">
                         <span className="text-xs text-gray-500 truncate">
                           mín {p.stock_minimo}
-                          {editMode && ` · crít ${p.stock_critico} · ${p.proveedor_texto || 'sin proveedor'}`}
+                          {editMode &&
+                            ` · crít ${p.stock_critico} · ${p.proveedores.length > 0 ? p.proveedores.join(', ') : 'sin proveedor'}`}
                         </span>
 
                         {editMode && puedeEditar ? (
@@ -859,54 +937,70 @@ export default function StockPage() {
                     {anadiendoAGrupoId === grupo.id ? (
                       <div className="bg-gray-50 rounded-md p-3 space-y-2">
                         <div className="grid grid-cols-2 gap-2">
-                          <input
-                            placeholder="Nombre"
-                            className="border border-gray-300 rounded px-2 py-1.5 text-sm"
-                            value={formAlta.nombre}
-                            onChange={(e) => setFormAlta((f) => ({ ...f, nombre: e.target.value }))}
-                          />
-                          <input
-                            placeholder="Unidad"
-                            className="border border-gray-300 rounded px-2 py-1.5 text-sm"
-                            value={formAlta.unidad}
-                            onChange={(e) => setFormAlta((f) => ({ ...f, unidad: e.target.value }))}
-                          />
-                          <input
-                            type="number"
-                            min={0}
-                            placeholder="Mínimo"
-                            className="border border-gray-300 rounded px-2 py-1.5 text-sm"
-                            value={formAlta.stock_minimo}
-                            onChange={(e) =>
-                              setFormAlta((f) => ({ ...f, stock_minimo: parseInt(e.target.value) || 0 }))
-                            }
-                          />
-                          <input
-                            type="number"
-                            min={0}
-                            placeholder="Crítico"
-                            className="border border-gray-300 rounded px-2 py-1.5 text-sm"
-                            value={formAlta.stock_critico}
-                            onChange={(e) =>
-                              setFormAlta((f) => ({ ...f, stock_critico: parseInt(e.target.value) || 0 }))
-                            }
-                          />
-                          <input
-                            placeholder="Proveedor"
-                            className="border border-gray-300 rounded px-2 py-1.5 text-sm"
-                            value={formAlta.proveedor_texto}
-                            onChange={(e) => setFormAlta((f) => ({ ...f, proveedor_texto: e.target.value }))}
-                          />
-                          <input
-                            type="number"
-                            min={0}
-                            placeholder="Stock inicial (opcional)"
-                            className="border border-gray-300 rounded px-2 py-1.5 text-sm"
-                            value={formAlta.stock_inicial}
-                            onChange={(e) =>
-                              setFormAlta((f) => ({ ...f, stock_inicial: parseInt(e.target.value) || 0 }))
-                            }
-                          />
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Nombre</label>
+                            <input
+                              placeholder="Nombre"
+                              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                              value={formAlta.nombre}
+                              onChange={(e) => setFormAlta((f) => ({ ...f, nombre: e.target.value }))}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Unidad</label>
+                            <input
+                              placeholder="Ej. cajas, litros..."
+                              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                              value={formAlta.unidad}
+                              onChange={(e) => setFormAlta((f) => ({ ...f, unidad: e.target.value }))}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Mínimo (avisa "reponer")</label>
+                            <input
+                              type="number"
+                              min={0}
+                              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                              value={formAlta.stock_minimo}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) =>
+                                setFormAlta((f) => ({ ...f, stock_minimo: parseInt(e.target.value) || 0 }))
+                              }
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Crítico (avisa "urgente")</label>
+                            <input
+                              type="number"
+                              min={0}
+                              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                              value={formAlta.stock_critico}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) =>
+                                setFormAlta((f) => ({ ...f, stock_critico: parseInt(e.target.value) || 0 }))
+                              }
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Proveedores (opcional)</label>
+                            <SelectorProveedores
+                              proveedores={formAlta.proveedores}
+                              onChange={(nuevos) => setFormAlta((f) => ({ ...f, proveedores: nuevos }))}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Stock inicial (opcional)</label>
+                            <input
+                              type="number"
+                              min={0}
+                              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                              value={formAlta.stock_inicial}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) =>
+                                setFormAlta((f) => ({ ...f, stock_inicial: parseInt(e.target.value) || 0 }))
+                              }
+                            />
+                          </div>
                         </div>
                         <div className="flex gap-2">
                           <button

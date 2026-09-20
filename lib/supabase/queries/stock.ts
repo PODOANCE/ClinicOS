@@ -71,15 +71,57 @@ export async function getStockCategorias(): Promise<StockCategoria[]> {
 
 export async function getStockProductos(): Promise<StockProducto[]> {
   const supabase = createClient()
-  return withJWTRetry(
+  const productos = await withJWTRetry<any[]>(
     () =>
       supabase
         .from('stock_productos')
-        .select('*')
+        .select('*, stock_producto_proveedores(proveedor_texto)')
         .is('archived_at', null)
         .order('nombre', { ascending: true }) as any,
     'getStockProductos'
   )
+
+  return (productos || []).map((p) => {
+    const { stock_producto_proveedores, ...resto } = p
+    return {
+      ...resto,
+      proveedores: (stock_producto_proveedores || []).map((pp: any) => pp.proveedor_texto).sort(),
+    }
+  })
+}
+
+async function reemplazarProveedoresProducto(
+  productoId: string,
+  proveedores: string[],
+  centroId: string,
+  actorId: string
+): Promise<void> {
+  const supabase = createClient() as any
+  const nombres = [...new Set(proveedores.map((p) => p.trim()).filter((p) => p.length > 0))]
+
+  const { error: errorBorrado } = await supabase
+    .from('stock_producto_proveedores')
+    .delete()
+    .eq('producto_id', productoId)
+  if (errorBorrado) {
+    console.error('[reemplazarProveedoresProducto] Error al borrar:', errorBorrado.message)
+    throw errorBorrado
+  }
+
+  if (nombres.length === 0) return
+
+  const { error: errorInsercion } = await supabase.from('stock_producto_proveedores').insert(
+    nombres.map((proveedor_texto) => ({
+      producto_id: productoId,
+      proveedor_texto,
+      centro_id: centroId,
+      created_by: actorId,
+    }))
+  )
+  if (errorInsercion) {
+    console.error('[reemplazarProveedoresProducto] Error al insertar:', errorInsercion.message)
+    throw errorInsercion
+  }
 }
 
 export async function crearStockCategoria(input: {
@@ -103,22 +145,25 @@ export async function crearStockCategoria(input: {
   return data as StockCategoria
 }
 
-export async function crearStockProducto(input: {
-  nombre: string
-  unidad: string
-  categoria_id: string
-  stock_minimo: number
-  stock_critico: number
-  proveedor_texto: string | null
-  proveedor_id: string | null
-  centro_id: string
-}): Promise<StockProducto> {
+export async function crearStockProducto(
+  input: {
+    nombre: string
+    unidad: string
+    categoria_id: string
+    stock_minimo: number
+    stock_critico: number
+    proveedores: string[]
+    centro_id: string
+  },
+  actorId: string
+): Promise<StockProducto> {
   const supabase = createClient() as any
+  const { proveedores, ...campos } = input
   // stock_actual se omite deliberadamente: nace en 0 (default de columna).
   // El trigger de integridad rechaza cualquier INSERT con stock_actual != 0.
   const { data, error } = await supabase
     .from('stock_productos')
-    .insert(input)
+    .insert({ ...campos, created_by: actorId, updated_by: actorId })
     .select()
     .single()
 
@@ -126,7 +171,10 @@ export async function crearStockProducto(input: {
     console.error('[crearStockProducto] Error:', error.message)
     throw error
   }
-  return data as StockProducto
+
+  await reemplazarProveedoresProducto(data.id, proveedores, input.centro_id, actorId)
+
+  return { ...data, proveedores: [...new Set(proveedores.map((p) => p.trim()).filter(Boolean))].sort() } as StockProducto
 }
 
 export async function actualizarStockProducto(
@@ -136,15 +184,16 @@ export async function actualizarStockProducto(
     unidad: string
     stock_minimo: number
     stock_critico: number
-    proveedor_texto: string | null
-    proveedor_id: string | null
+    proveedores: string[]
     categoria_id: string
-  }>
+  }>,
+  actorId: string
 ): Promise<StockProducto> {
   const supabase = createClient() as any
+  const { proveedores, ...campos } = input
   const { data, error } = await supabase
     .from('stock_productos')
-    .update(input)
+    .update({ ...campos, updated_by: actorId })
     .eq('id', id)
     .select()
     .single()
@@ -153,7 +202,20 @@ export async function actualizarStockProducto(
     console.error('[actualizarStockProducto] Error:', error.message)
     throw error
   }
-  return data as StockProducto
+
+  if (proveedores !== undefined) {
+    await reemplazarProveedoresProducto(id, proveedores, data.centro_id, actorId)
+  }
+
+  const { data: proveedoresActuales } = await supabase
+    .from('stock_producto_proveedores')
+    .select('proveedor_texto')
+    .eq('producto_id', id)
+
+  return {
+    ...data,
+    proveedores: (proveedoresActuales || []).map((pp: any) => pp.proveedor_texto).sort(),
+  } as StockProducto
 }
 
 export async function archivarStockProducto(id: string): Promise<void> {
