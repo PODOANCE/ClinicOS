@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useUser } from '@/lib/contexts/UserContext'
 import { getConsentimiento, getTemaConsentimiento } from '@/lib/supabase/queries/consentimientos'
+import { DiagramaPies } from '../DiagramaPies'
 import type { Consentimiento, ConsentimientoTema } from '@/lib/types/models'
 
 const DENIM = '#183B5F'
@@ -104,6 +105,8 @@ export default function VerConsentimientoPage() {
           <div className="font-bold mb-1">A.- PROCEDIMIENTO:</div>
           <div className="font-semibold">{consentimiento.procedimiento_titulo}</div>
         </div>
+
+        <DiagramaPies />
 
         <div className="mb-4">
           <div className="font-bold mb-1">B.- CONSENTIMIENTO:</div>
