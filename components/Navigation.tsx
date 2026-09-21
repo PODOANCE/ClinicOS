@@ -18,6 +18,7 @@ export function Navigation() {
   const [puedeVerSeguimiento, setPuedeVerSeguimiento] = useState(false)
   const [puedeVerHerramientasAdmin, setPuedeVerHerramientasAdmin] = useState(false)
   const [esAdminSistema, setEsAdminSistema] = useState(false)
+  const [puedeVerPresupuestos, setPuedeVerPresupuestos] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -31,6 +32,7 @@ export function Navigation() {
       // Recordatorios y Quiropodia manejan teléfonos de pacientes: solo administración, no podólogos/ortopedas.
       setPuedeVerHerramientasAdmin(canUserAccess(roles, 'Seguimiento', 'ver') && esRolAdministracion(roles))
       setEsAdminSistema(isSystemAdmin(roles))
+      setPuedeVerPresupuestos(canUserAccess(roles, 'Presupuestos', 'ver'))
     })
   }, [user])
 
@@ -45,6 +47,7 @@ export function Navigation() {
     ...(puedeVerHerramientasAdmin ? [{ nombre: 'Recordatorios', href: '/recordatorios' }] : []),
     ...(puedeVerHerramientasAdmin ? [{ nombre: 'Quiropodia', href: '/quiropodia' }] : []),
     ...(puedeVerPanel ? [{ nombre: 'Panel de Control', href: '/panel' }] : []),
+    ...(puedeVerPresupuestos ? [{ nombre: 'Presupuestos', href: '/presupuestos' }] : []),
     ...(esAdminSistema ? [{ nombre: '🏆 Mejores pacientes', href: '/mejores-pacientes' }] : []),
   ]
 

@@ -347,3 +347,46 @@ export interface PacienteTelefono {
   updated_at: string;
   updated_by: string;
 }
+
+// Presupuestos: catálogo Tema -> Variante (ej. "Cirugía Ungueal" ->
+// "Bilateral 4 canales", 700€) + los presupuestos generados a partir de
+// él. concepto/precio quedan copiados en el presupuesto al crearlo, así
+// que si luego cambia el precio del catálogo los ya emitidos no se alteran.
+export interface PresupuestoTema {
+  id: string;
+  nombre: string;
+  orden: number;
+  activo: boolean;
+  centro_id: string;
+  created_at: string;
+  created_by: string;
+}
+
+export interface PresupuestoVariante {
+  id: string;
+  tema_id: string;
+  nombre: string;
+  precio: number;
+  orden: number;
+  activo: boolean;
+  centro_id: string;
+  created_at: string;
+  created_by: string;
+}
+
+export interface Presupuesto {
+  id: string;
+  numero: string;
+  fecha: string;
+  paciente_nombre: string;
+  paciente_dni: string | null;
+  paciente_direccion: string | null;
+  paciente_clave: string | null;
+  tema_id: string | null;
+  variante_id: string | null;
+  concepto: string;
+  precio: number;
+  centro_id: string;
+  created_at: string;
+  created_by: string;
+}

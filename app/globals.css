@@ -24,3 +24,23 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Imprimir/guardar como PDF un documento (presupuestos, consentimientos...)
+   sin la barra de navegación ni el resto de la app alrededor. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .imprimir-documento, .imprimir-documento * {
+    visibility: visible;
+  }
+  .imprimir-documento {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+  .no-imprimir {
+    display: none !important;
+  }
+}
