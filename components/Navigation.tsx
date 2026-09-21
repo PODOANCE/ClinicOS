@@ -19,6 +19,7 @@ export function Navigation() {
   const [puedeVerHerramientasAdmin, setPuedeVerHerramientasAdmin] = useState(false)
   const [esAdminSistema, setEsAdminSistema] = useState(false)
   const [puedeVerPresupuestos, setPuedeVerPresupuestos] = useState(false)
+  const [puedeVerConsentimientos, setPuedeVerConsentimientos] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -33,6 +34,7 @@ export function Navigation() {
       setPuedeVerHerramientasAdmin(canUserAccess(roles, 'Seguimiento', 'ver') && esRolAdministracion(roles))
       setEsAdminSistema(isSystemAdmin(roles))
       setPuedeVerPresupuestos(canUserAccess(roles, 'Presupuestos', 'ver'))
+      setPuedeVerConsentimientos(canUserAccess(roles, 'Consentimientos', 'ver'))
     })
   }, [user])
 
@@ -48,6 +50,7 @@ export function Navigation() {
     ...(puedeVerHerramientasAdmin ? [{ nombre: 'Quiropodia', href: '/quiropodia' }] : []),
     ...(puedeVerPanel ? [{ nombre: 'Panel de Control', href: '/panel' }] : []),
     ...(puedeVerPresupuestos ? [{ nombre: 'Presupuestos', href: '/presupuestos' }] : []),
+    ...(puedeVerConsentimientos ? [{ nombre: 'Consentimientos', href: '/consentimientos' }] : []),
     ...(esAdminSistema ? [{ nombre: '🏆 Mejores pacientes', href: '/mejores-pacientes' }] : []),
   ]
 

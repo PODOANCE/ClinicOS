@@ -390,3 +390,56 @@ export interface Presupuesto {
   created_at: string;
   created_by: string;
 }
+
+// Consentimientos informados: mismo patrón Tema -> Variante que
+// Presupuestos, pero el texto legal (riesgos, postoperatorio...) va en el
+// propio Tema porque es igual para todas sus variantes; solo cambia el
+// título del procedimiento y la descripción coloquial.
+export interface ConsentimientoTema {
+  id: string;
+  nombre: string;
+  titulo_documento: string;
+  texto_advertencia: string;
+  texto_alternativas: string;
+  texto_consecuencias: string;
+  texto_precauciones: string;
+  texto_complicaciones_tipicas: string;
+  texto_complicaciones_graves: string;
+  texto_postoperatorio: string;
+  orden: number;
+  activo: boolean;
+  centro_id: string;
+  created_at: string;
+  created_by: string;
+}
+
+export interface ConsentimientoVariante {
+  id: string;
+  tema_id: string;
+  nombre: string;
+  procedimiento_titulo: string;
+  descripcion_coloquial: string;
+  orden: number;
+  activo: boolean;
+  centro_id: string;
+  created_at: string;
+  created_by: string;
+}
+
+export interface Consentimiento {
+  id: string;
+  fecha: string;
+  paciente_nombre: string;
+  paciente_nif: string | null;
+  paciente_telefono: string | null;
+  paciente_historia_clinica: string | null;
+  paciente_clave: string | null;
+  podologos: string;
+  tema_id: string | null;
+  variante_id: string | null;
+  procedimiento_titulo: string;
+  descripcion_coloquial: string;
+  centro_id: string;
+  created_at: string;
+  created_by: string;
+}
