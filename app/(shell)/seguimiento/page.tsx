@@ -164,7 +164,6 @@ export default function SeguimientoPage() {
   const [generandoRecontacto, setGenerandoRecontacto] = useState(false)
   const [mensajesRecontacto, setMensajesRecontacto] = useState<{ paciente: string; telefono: string | null; mensaje: string; enlace: string | null }[] | null>(null)
   const [copiadoRecontacto, setCopiadoRecontacto] = useState<string | null>(null)
-  const [celebracion, setCelebracion] = useState<{ id: number; mensaje: string } | null>(null)
 
   useEffect(() => {
     if (user) cargar()
@@ -276,17 +275,6 @@ export default function SeguimientoPage() {
             : `${p.nombre_mostrar}: fecha borrada → vuelve a "Sin cita - recontactar".`
         )
         setTimeout(() => setAviso(null), 6000)
-      }
-      if (campos.gestionRecontacto === 'CITA_AGENDADA' && p.gestion_recontacto !== 'CITA_AGENDADA') {
-        const totalMes = (reagendadasEsteMes + 1) * PRECIO_REVISION
-        const idCelebracion = Date.now()
-        setCelebracion({
-          id: idCelebracion,
-          mensaje: `+${PRECIO_REVISION}€ · ${p.nombre_mostrar} reagendada. Llevamos ${totalMes}€ este mes. ¡BIEN HECHO! 🎉`,
-        })
-        setTimeout(() => {
-          setCelebracion((actual) => (actual?.id === idCelebracion ? null : actual))
-        }, 4000)
       }
       await cargar()
     } catch (err) {
@@ -444,16 +432,6 @@ export default function SeguimientoPage() {
           <div className="text-xs font-medium mt-0.5 text-green-700">💶 Recuperado este mes ({reagendadasEsteMes})</div>
         </div>
       </div>
-
-      {celebracion && (
-        <div
-          key={celebracion.id}
-          className="celebracion-toast fixed top-16 left-1/2 z-[60] px-5 py-3 rounded-full shadow-lg text-white font-bold text-sm whitespace-nowrap"
-          style={{ backgroundColor: '#16a34a' }}
-        >
-          {celebracion.mensaje}
-        </div>
-      )}
 
       {aviso && (
         <div className="bg-blue-50 border border-blue-200 text-blue-800 text-sm rounded-md px-4 py-2 flex items-center justify-between gap-3">
